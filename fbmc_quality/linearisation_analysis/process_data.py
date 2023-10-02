@@ -1,7 +1,9 @@
 import re
 from datetime import date
+from typing import Callable
 
 import numpy as np
+import pandas as pd
 from pandera.typing import DataFrame
 
 #from bdl_data.fetch_bdl_data import get_bdl_data_for_cnec
@@ -72,43 +74,68 @@ def load_jao_data_basecase_nps_and_observed_nps(start: date, end: date) -> JaoDa
 
     return JaoDataAndNPS(jao_data, basecase_nps, observed_nps)
 
+def load_data_for_internal_cnec(cnecName: str, fetch_cnec_data: Callable[[date, date, str], pd.DataFrame], jaodata_and_net_positions: JaoDataAndNPS) -> CnecDataAndNPS | None:
+    """Loads data for a given cnec from its name as it appears in the JAO API. 
+    Takes a callable to fetch data from an arbitrary source
 
-def load_data_for_cnec(cnecName: str, jao_and_entsoe_data: JaoDataAndNPS) -> CnecDataAndNPS | None:
-    cnec_id = get_cnec_id_from_name(cnecName, jao_and_entsoe_data.jaoData)
-    cnec_ds = jao_and_entsoe_data.jaoData.xs(cnec_id, level=JaoData.cnec_id)
+    Args:
+        cnecName (str): Name of the CNEC as it appears in the JAO API
+        fetch_cnec_data (Callable[[date, date, str], pd.DataFrame]): Callable that queries for cnec data
+        jaodata_and_net_positions (JaoDataAndNPS): Data from JAO and target Net Positions
 
-    end = jao_and_entsoe_data.jaoData.index.get_level_values(JaoData.time).max().to_pydatetime()
-    start = jao_and_entsoe_data.jaoData.index.get_level_values(JaoData.time).min().to_pydatetime()
+    Returns:
+        CnecDataAndNPS | None: Data on the CNEC and with relevant net_positions
+    """
+    cnec_id = get_cnec_id_from_name(cnecName, jaodata_and_net_positions.jaoData)
+    cnec_ds = jaodata_and_net_positions.jaoData.xs(cnec_id, level=JaoData.cnec_id)
 
-    if re.search(r"\d{5}_\d{2}", cnecName) is not None:
-        observed_flow = get_bdl_data_for_cnec(start, end, cnecName)
-    else:
-        bidding_zone, to_zone = get_from_to_bz_from_name(cnecName)
-        if bidding_zone is None or to_zone is None:
-            raise ValueError(f"No from/to zone found for {cnecName}")
-
-        observed_flow = get_observed_entsoe_data_for_cnec(bidding_zone, to_zone, start, end)
-
+    end = jaodata_and_net_positions.jaoData.index.get_level_values(JaoData.time).max().to_pydatetime()
+    start = jaodata_and_net_positions.jaoData.index.get_level_values(JaoData.time).min().to_pydatetime()
+    
+    observed_flow = fetch_cnec_data(start, end, cnecName)
     if observed_flow is None or observed_flow.empty or cnec_ds.empty:
         return None
 
     index_alignment = (
         cnec_ds.index.get_level_values(JaoData.time)
         .intersection(observed_flow.index)
-        .intersection(jao_and_entsoe_data.observedNPs.index)
-        .intersection(jao_and_entsoe_data.basecaseNPs.index)
+        .intersection(jaodata_and_net_positions.observedNPs.index)
+        .intersection(jaodata_and_net_positions.basecaseNPs.index)
     )
     cnec_ds = cnec_ds.loc[index_alignment, :]
     observed_flow = observed_flow.loc[index_alignment, :]
-    jao_and_entsoe_data = JaoDataAndNPS(
-        jao_and_entsoe_data.jaoData,
-        jao_and_entsoe_data.basecaseNPs.loc[index_alignment, :],  # type: ignore
-        jao_and_entsoe_data.observedNPs.loc[index_alignment, :],  # type: ignore
+    jaodata_and_net_positions = JaoDataAndNPS(
+        jaodata_and_net_positions.jaoData,
+        jaodata_and_net_positions.basecaseNPs.loc[index_alignment, :],  # type: ignore
+        jaodata_and_net_positions.observedNPs.loc[index_alignment, :],  # type: ignore
     )
 
     return CnecDataAndNPS(
-        cnec_id, cnecName, cnec_ds, jao_and_entsoe_data.basecaseNPs, jao_and_entsoe_data.observedNPs, observed_flow
+        cnec_id, cnecName, cnec_ds, jaodata_and_net_positions.basecaseNPs, jaodata_and_net_positions.observedNPs, observed_flow
     )
+
+def _get_entsoe_data_for_cnec(start: date, end: date, cnecName: str)-> pd.DataFrame:
+    bidding_zone, to_zone = get_from_to_bz_from_name(cnecName)
+    if bidding_zone is None or to_zone is None:
+        raise ValueError(f"No from/to zone found for {cnecName}")
+
+    observed_flow = get_observed_entsoe_data_for_cnec(bidding_zone, to_zone, start, end)
+    return observed_flow
+
+def load_data_for_corridor_cnec(cnecName: str, jaodata_and_net_positions: JaoDataAndNPS) -> CnecDataAndNPS | None:
+    """Loads data for a given cnec from its name as it appears in the  JAO API
+
+    Args:
+        cnecName (str): Name of the CNEC as it appears in the JAO API
+        jao_and_entsoe_data (JaoDataAndNPS): Data from JAO and Entsoe APIs
+
+    Raises:
+        ValueError: If the cnecName is a border CNEC - raises if no mapping to ENTSOE transparency is found
+
+    Returns:
+        CnecDataAndNPS | None: CNEC data if any is found
+    """
+    return load_data_for_internal_cnec(cnecName, _get_entsoe_data_for_cnec, jaodata_and_net_positions)
 
 
 def get_from_to_bz_from_name(cnecName: str):

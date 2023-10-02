@@ -6,6 +6,10 @@ authors = ["Robert Solli <robert@xal.no>", "Kristan Authen <kristian.authen@stat
 readme = "README.md"
 packages = [{include = "fbmc_quality"}]
 
+[project.urls]
+"Homepage" = "https://github.com/copperwire/fbmc-quality"
+"Documentation" = "https://fbmc-quality.readthedocs.io/en/latest/"
+
 [tool.poetry.scripts]
 fetch_jao_data = 'fbmc_quality.jao_data.jao_store_cli:app'
 fetch_entsoe_data = 'fbmc_quality.entsoe_data.entsoe_store_cli:app'

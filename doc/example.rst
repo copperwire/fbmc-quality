@@ -8,7 +8,7 @@ The simplest use of the repository is to plot the linearsiation error for a peri
 
     from fbmc_quality.linearisation_analysis import compute_linearisation_error
     from fbmc_quality.linearisation_analysis import compute_linearisation_error, compute_linearised_flow
-    from fbmc_quality.linearisation_analysis import load_data_for_cnec, load_jao_data_basecase_nps_and_observed_nps
+    from fbmc_quality.linearisation_analysis import load_data_for_corridor_cnec, load_jao_data_basecase_nps_and_observed_nps
 
     from datetime import date
     import plotly.express as px
@@ -19,7 +19,7 @@ The simplest use of the repository is to plot the linearsiation error for a peri
     end = date(2023, 5, 1)
     data = load_jao_data_basecase_nps_and_observed_nps(start, end)
     cnec_name ='NO3->SE2' 
-    cnec_data = load_data_for_cnec(
+    cnec_data = load_data_for_corridor_cnec(
         cnec_name,
         data
     )

@@ -29,7 +29,9 @@ sphinx:
 # See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
 
 python:
-   install:
+  # make sure package is installed in the virtualenv (it is imported in
+  # conf.py)
+  install:
     - requirements: doc/requirements.txt
     - method: pip
-        path: .
+      path: .

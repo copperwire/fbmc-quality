@@ -29,7 +29,7 @@ sphinx:
 # See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
 
 python:
-  # make sure joblib is installed in the virtualenv (it is imported in
+  # make sure package is installed in the virtualenv (it is imported in
   # conf.py)
   install:
     - requirements: doc/requirements.txt

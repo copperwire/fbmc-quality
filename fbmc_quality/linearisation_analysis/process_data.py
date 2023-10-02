@@ -2,15 +2,17 @@ import re
 from datetime import date
 
 import numpy as np
-from bdl_data.fetch_bdl_data import get_bdl_data_for_cnec
-from dataframe_schemas.schemas import BiddingZones, JaoData, NetPosition
-from entsoe_data.fetch_entsoe_data import get_net_position_from_crossborder_flows, get_observed_entsoe_data_for_cnec
-from enums.bidding_zones import BiddingZonesEnum
-from jao_data.analyse_jao_data import compute_basecase_net_pos, get_cnec_id_from_name
-from jao_data.fetch_jao_data import fetch_jao_dataframe_timeseries
-from linearisation_analysis.compute_functions import compute_linearised_flow
-from linearisation_analysis.dataclasses import CnecDataAndNPS, JaoDataAndNPS, PlotData
 from pandera.typing import DataFrame
+
+#from bdl_data.fetch_bdl_data import get_bdl_data_for_cnec
+from fbmc_quality.entsoe_data.fetch_entsoe_data import get_net_position_from_crossborder_flows, get_observed_entsoe_data_for_cnec
+from fbmc_quality.enums.bidding_zones import BiddingZonesEnum
+from fbmc_quality.jao_data.analyse_jao_data import compute_basecase_net_pos, get_cnec_id_from_name
+from fbmc_quality.jao_data.fetch_jao_data import fetch_jao_dataframe_timeseries
+from fbmc_quality.linearisation_analysis.compute_functions import compute_linearised_flow
+from fbmc_quality.linearisation_analysis.dataclasses import CnecDataAndNPS, JaoDataAndNPS, PlotData
+from fbmc_quality.dataframe_schemas import JaoData, NetPosition, BiddingZones
+
 
 
 def make_train_and_targets(cnec_data: CnecDataAndNPS) -> PlotData:
@@ -34,7 +36,7 @@ def transform_delta_np_and_ptdfs_to_numpy(
     Will replace NaN with 0 in the PTDF matrix
 
     Args:
-        unweighted_delta_np (DataFrame[BiddingZones]): Dataframe net_positions
+        unweighted_delta_np (DataFrame[NetPosition]): Dataframe net_positions
         cnec_ds (DataFrame[JaoData]): Dataframe with ptdfs
 
     Returns:

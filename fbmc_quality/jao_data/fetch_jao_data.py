@@ -12,7 +12,7 @@ import aiohttp
 import pandas as pd
 import psutil
 from click import FileError
-from dataframe_schemas.schemas import JaoData
+from fbmc_quality.dataframe_schemas.schemas import JaoData
 from joblib import Parallel, delayed
 from pandera.typing import DataFrame
 

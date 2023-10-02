@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fbmc-linearisation-analysis"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["Robert Solli <robert@xal.no>", "Kristan Authen <kristian.authen@statnett.no>"]
 readme = "README.md"
@@ -38,6 +38,10 @@ python-dotenv = "^1.0.0"
 scalene = "^1.5.23"
 viztracer = "^0.15.6"
 hypothesis = "^6.86.2"
+sphinx = "^7.2.6"
+sphinx-autodoc-typehints = "^1.24.0"
+enum-tools = "^0.11.0"
+sphinx-toolbox = "^3.5.0"
 
 [build-system]
 requires = ["poetry-core"]

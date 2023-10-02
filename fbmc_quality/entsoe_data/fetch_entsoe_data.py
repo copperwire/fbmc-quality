@@ -6,12 +6,12 @@ from typing import Generator
 
 import pandas as pd
 import psutil
-from dataframe_schemas.schemas import NetPosition
 from entsoe import Area, EntsoePandasClient
 from joblib import Parallel, delayed
 from pandera.typing import DataFrame
 from requests import Session
 
+from fbmc_quality.dataframe_schemas.schemas import NetPosition
 from fbmc_quality.enums.bidding_zones import BiddingZonesEnum
 from fbmc_quality.jao_data.analyse_jao_data import get_utc_delta, is_elements_equal_to_target
 from fbmc_quality.jao_data.fetch_jao_data import create_default_folder
@@ -327,4 +327,4 @@ def get_observed_entsoe_data_for_cnec(
 
     df = df0 - df1
 
-    return df
+    return df.to_frame('flow')

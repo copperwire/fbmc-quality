@@ -2,7 +2,7 @@ from typing import NamedTuple
 
 import numpy as np
 import pandas as pd
-from dataframe_schemas.schemas import CnecData, JaoData, NetPosition
+from fbmc_quality.dataframe_schemas import CnecData, JaoData, NetPosition
 from pandera.typing import DataFrame
 
 

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 import typer
-from jao_data.fetch_jao_data import fetch_jao_dataframe_timeseries
+from fbmc_quality.jao_data.fetch_jao_data import fetch_jao_dataframe_timeseries
 
 app = typer.Typer()
 

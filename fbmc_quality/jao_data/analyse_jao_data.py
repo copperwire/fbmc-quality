@@ -152,13 +152,16 @@ def get_utc_delta(input_date: date | datetime) -> Literal[1, 2]:
     return hours
 
 
-def get_cnec_id_from_name(cnecName: str, dataset: DataFrame[JaoData]) -> str:
+def get_cnec_id_from_name(
+    cnecName: str, dataset: DataFrame[JaoData], alternative_names: dict[str, list[str]] = ALTERNATIVE_NAMES
+) -> str:
     """Gets the CNEC-ID for a given cnec name. Returns the id(s) associated with this name
     at the 0th timestep of the dataset
 
     Args:
         cnecName (str): CNEC to find the correspondig ID for
         dataset (DataFrame[JaoData]): Dataset of CNEC information. See `make_data_array_from_datetime` for the schema
+        alternative_names (dict[str, list[str]]): mapping of names that may have changed
 
     Returns:
         np.ndarray | int: Possibly Id(s) of the cnecs that correspond to the
@@ -175,11 +178,11 @@ def get_cnec_id_from_name(cnecName: str, dataset: DataFrame[JaoData]) -> str:
     if len(cnec_ids) == 1:
         return cnec_ids.values[0]
 
-    if cnecName in ALTERNATIVE_NAMES and test_alternative:
+    if cnecName in alternative_names and test_alternative:
         test_alternative = False
         with suppress(ValueError):
-            for alternative in ALTERNATIVE_NAMES[cnecName]:
-                pot_id = get_cnec_id_from_name(alternative, dataset)
+            for alternative in alternative_names[cnecName]:
+                pot_id = get_cnec_id_from_name(alternative, dataset, alternative_names)
                 return pot_id
 
     fallback_id = _get_cnec_id_from_polars_frame(cnecName, dataset)["cnec_id"].unique()
@@ -198,7 +201,9 @@ def _get_cnec_id_from_polars_frame(cnecName: str, dataset: DataFrame[JaoData]) -
 
 
 def get_cross_border_cnec_ids(
-    df: DataFrame[JaoData], bidding_zones: BiddingZonesEnum | list[BiddingZonesEnum] | None = None
+    df: DataFrame[JaoData],
+    bidding_zones: BiddingZonesEnum | list[BiddingZonesEnum] | None = None,
+    bidding_zone_cnec_map: dict[BiddingZonesEnum, list[str]] = BIDDING_ZONE_CNEC_MAP,
 ) -> dict[BiddingZonesEnum, list[str]]:
     """From a dataset find the cnec ids (a coordinate in the DS) that correspond to the cross border flows.
     The mapping is maintained in BIDDING_ZONE_CNEC_MAP
@@ -208,6 +213,17 @@ def get_cross_border_cnec_ids(
             Must have index cnec_id, and column cnecName
         bidding_zones (BiddingZonesEnum | list[BiddingZones] | None, optional):
             Bidding zones for which to find cross border cnecs. Defaults to None.
+        bidding_zone_cnec_map (dict[BiddingZonesEnum, list[str]]):
+            Mapping from bidding zone to cnec names, i.e.
+            >>> bidding_zone_cnec_map = {
+            >>> BiddingZonesEnum.NO1: [
+            >>>     "NO2->NO1",
+            >>>     "NO3->NO1",
+            >>>     "NO5->NO1",
+            >>>     "SE3->NO1",
+            >>> ],
+            >>> ...
+            >>> }
 
     Returns:
         dict[BiddingZonesEnum, list[str]]: mapping of bidding zone to cnec_id strings
@@ -223,7 +239,7 @@ def get_cross_border_cnec_ids(
     for bidding_zone in bidding_zones:
         cnec_mrids = []
         try:
-            cnec_names = BIDDING_ZONE_CNEC_MAP[bidding_zone]
+            cnec_names = bidding_zone_cnec_map[bidding_zone]
             for cnec_name in cnec_names:
                 mrid = get_cnec_id_from_name(cnec_name, df)
                 cnec_mrids.append(mrid)

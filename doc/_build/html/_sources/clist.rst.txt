@@ -1,8 +1,0 @@
-
-
-Command Line Interface
-----------------------
-
-Pulling data from JAO and ENTSOE-Transparency can be quite slow. The data is cached locally in the `~\.linearisation_error` directory.
-You can pre download the data to disk using the CLIs `fetch_jao_data` and `fetch_entsoe_data`. Both of these accept a from-date and to-date,
-on the format `YYYY-MM-DD`. 

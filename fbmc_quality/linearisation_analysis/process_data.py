@@ -6,15 +6,18 @@ import numpy as np
 import pandas as pd
 from pandera.typing import DataFrame
 
-#from bdl_data.fetch_bdl_data import get_bdl_data_for_cnec
-from fbmc_quality.entsoe_data.fetch_entsoe_data import get_net_position_from_crossborder_flows, get_observed_entsoe_data_for_cnec
+from fbmc_quality.dataframe_schemas import BiddingZones, JaoData, NetPosition
+
+# from bdl_data.fetch_bdl_data import get_bdl_data_for_cnec
+from fbmc_quality.entsoe_data.fetch_entsoe_data import (
+    fetch_net_position_from_crossborder_flows,
+    fetch_observed_entsoe_data_for_cnec,
+)
 from fbmc_quality.enums.bidding_zones import BiddingZonesEnum
 from fbmc_quality.jao_data.analyse_jao_data import compute_basecase_net_pos, get_cnec_id_from_name
 from fbmc_quality.jao_data.fetch_jao_data import fetch_jao_dataframe_timeseries
 from fbmc_quality.linearisation_analysis.compute_functions import compute_linearised_flow
 from fbmc_quality.linearisation_analysis.dataclasses import CnecDataAndNPS, JaoDataAndNPS, PlotData
-from fbmc_quality.dataframe_schemas import JaoData, NetPosition, BiddingZones
-
 
 
 def make_train_and_targets(cnec_data: CnecDataAndNPS) -> PlotData:
@@ -63,7 +66,7 @@ def transform_delta_np_and_ptdfs_to_numpy(
 
 def load_jao_data_basecase_nps_and_observed_nps(start: date, end: date) -> JaoDataAndNPS:
     jao_data = fetch_jao_dataframe_timeseries(start, end)
-    observed_nps = get_net_position_from_crossborder_flows(start, end)
+    observed_nps = fetch_net_position_from_crossborder_flows(start, end)
     basecase_nps = compute_basecase_net_pos(start, end)
     if observed_nps is None:
         raise ValueError(f"No observed data for {start} {end}")
@@ -74,8 +77,11 @@ def load_jao_data_basecase_nps_and_observed_nps(start: date, end: date) -> JaoDa
 
     return JaoDataAndNPS(jao_data, basecase_nps, observed_nps)
 
-def load_data_for_internal_cnec(cnecName: str, fetch_cnec_data: Callable[[date, date, str], pd.DataFrame], jaodata_and_net_positions: JaoDataAndNPS) -> CnecDataAndNPS | None:
-    """Loads data for a given cnec from its name as it appears in the JAO API. 
+
+def load_data_for_internal_cnec(
+    cnecName: str, fetch_cnec_data: Callable[[date, date, str], pd.DataFrame], jaodata_and_net_positions: JaoDataAndNPS
+) -> CnecDataAndNPS | None:
+    """Loads data for a given cnec from its name as it appears in the JAO API.
     Takes a callable to fetch data from an arbitrary source
 
     Args:
@@ -91,7 +97,7 @@ def load_data_for_internal_cnec(cnecName: str, fetch_cnec_data: Callable[[date, 
 
     end = jaodata_and_net_positions.jaoData.index.get_level_values(JaoData.time).max().to_pydatetime()
     start = jaodata_and_net_positions.jaoData.index.get_level_values(JaoData.time).min().to_pydatetime()
-    
+
     observed_flow = fetch_cnec_data(start, end, cnecName)
     if observed_flow is None or observed_flow.empty or cnec_ds.empty:
         return None
@@ -111,16 +117,23 @@ def load_data_for_internal_cnec(cnecName: str, fetch_cnec_data: Callable[[date, 
     )
 
     return CnecDataAndNPS(
-        cnec_id, cnecName, cnec_ds, jaodata_and_net_positions.basecaseNPs, jaodata_and_net_positions.observedNPs, observed_flow
+        cnec_id,
+        cnecName,
+        cnec_ds,
+        jaodata_and_net_positions.basecaseNPs,
+        jaodata_and_net_positions.observedNPs,
+        observed_flow,
     )
 
-def _get_entsoe_data_for_cnec(start: date, end: date, cnecName: str)-> pd.DataFrame:
+
+def _get_entsoe_data_for_cnec(start: date, end: date, cnecName: str) -> pd.DataFrame:
     bidding_zone, to_zone = get_from_to_bz_from_name(cnecName)
     if bidding_zone is None or to_zone is None:
         raise ValueError(f"No from/to zone found for {cnecName}")
 
-    observed_flow = get_observed_entsoe_data_for_cnec(bidding_zone, to_zone, start, end)
+    observed_flow = fetch_observed_entsoe_data_for_cnec(bidding_zone, to_zone, start, end)
     return observed_flow
+
 
 def load_data_for_corridor_cnec(cnecName: str, jaodata_and_net_positions: JaoDataAndNPS) -> CnecDataAndNPS | None:
     """Loads data for a given cnec from its name as it appears in the  JAO API

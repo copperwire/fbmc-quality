@@ -16,7 +16,7 @@ from fbmc_quality.enums.bidding_zones import BiddingZonesEnum
 from fbmc_quality.jao_data.analyse_jao_data import get_utc_delta, is_elements_equal_to_target
 from fbmc_quality.jao_data.fetch_jao_data import create_default_folder
 
-ENSTOE_BIDING_ZONE_MAP: dict[BiddingZonesEnum, Area] = {
+ENSTOE_BIDDING_ZONE_MAP: dict[BiddingZonesEnum, Area] = {
     BiddingZonesEnum.NO1: Area.NO_1,
     BiddingZonesEnum.NO2: Area.NO_2,
     BiddingZonesEnum.NO3: Area.NO_3,
@@ -165,7 +165,7 @@ def cache_np_data(frame: pd.DataFrame, write_path: Path) -> None:
         sub_frame.to_frame().T.to_feather(write_path / f'net_positions_{hour.strftime("%Y%m%dT%H")}.arrow')
 
 
-def get_net_position_from_crossborder_flows(
+def fetch_net_position_from_crossborder_flows(
     start: date,
     end: date,
     bidding_zones: list[BiddingZonesEnum] | BiddingZonesEnum | None = None,
@@ -231,8 +231,8 @@ def _get_net_position_from_crossborder_flows(
     df_list = []
 
     for bidding_zone in bidding_zones:
-        if bidding_zone in ENSTOE_BIDING_ZONE_MAP:
-            area_from = ENSTOE_BIDING_ZONE_MAP[bidding_zone]
+        if bidding_zone in ENSTOE_BIDDING_ZONE_MAP:
+            area_from = ENSTOE_BIDDING_ZONE_MAP[bidding_zone]
             exchange_areas = ENTSOE_CROSS_BORDER_NP_MAP[area_from]
         elif bidding_zone in ENTSOE_HVDC_ZONE_MAP:
             area_from = ENTSOE_HVDC_ZONE_MAP[bidding_zone][0]
@@ -300,21 +300,35 @@ def get_cross_border_flow(start: date, end: date, area_from: Area, area_to: Area
     return _get_cross_border_flow(start_pd, end_pd, area_from, area_to)
 
 
-def get_observed_entsoe_data_for_cnec(
+def fetch_observed_entsoe_data_for_cnec(
     from_area: BiddingZonesEnum,
     to_area: BiddingZonesEnum,
     start_date: date,
     end_date: date,
 ) -> DataFrame:
-    if from_area in ENSTOE_BIDING_ZONE_MAP:
-        enstoe_from_area = ENSTOE_BIDING_ZONE_MAP[from_area]
+    """Calculates the flow on a border CNEC between two areas for a time period
+
+    Args:
+        from_area (BiddingZonesEnum): Start biddingzone - flow from this area has a positive sign
+        to_area (BiddingZonesEnum): End biddingzone - flow to this area has positive sign
+        start_date (date): start date to pull data from
+        end_date (date): enddate to pull data to
+
+    Raises:
+        ValueError: Mapping error if `ENTSOE_BIDDING_ZONE_MAP` does not contain the from/to zone.
+
+    Returns:
+        DataFrame: Frame with  time as index and one column `flow`
+    """
+    if from_area in ENSTOE_BIDDING_ZONE_MAP:
+        enstoe_from_area = ENSTOE_BIDDING_ZONE_MAP[from_area]
     elif from_area in ENTSOE_HVDC_ZONE_MAP:
         enstoe_from_area = ENTSOE_HVDC_ZONE_MAP[from_area][0]
     else:
         raise ValueError(f"No mapping for {from_area}")
 
-    if to_area in ENSTOE_BIDING_ZONE_MAP:
-        entsoe_to_area = ENSTOE_BIDING_ZONE_MAP[to_area]
+    if to_area in ENSTOE_BIDDING_ZONE_MAP:
+        entsoe_to_area = ENSTOE_BIDDING_ZONE_MAP[to_area]
     elif to_area in ENTSOE_HVDC_ZONE_MAP:
         entsoe_to_area = ENTSOE_HVDC_ZONE_MAP[to_area][1]
         if entsoe_to_area == enstoe_from_area:
@@ -327,4 +341,4 @@ def get_observed_entsoe_data_for_cnec(
 
     df = df0 - df1
 
-    return df.to_frame('flow')
+    return df.to_frame("flow")

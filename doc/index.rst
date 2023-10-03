@@ -25,6 +25,7 @@ Introduction
     configuration.rst
     clis.rst
     example.rst
+    example_app.rst
 
 .. currentmodule:: fbmc_quality
 

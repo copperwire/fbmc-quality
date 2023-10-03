@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fbmc-linearisation-analysis"
-version = "0.1.4"
+version = "0.1.5"
 description = ""
 authors = ["Robert Solli <robert@xal.no>", "Kristan Authen <kristian.authen@statnett.no>"]
 readme = "README.md"
@@ -28,6 +28,9 @@ typer = {extras = ["all"], version = "^0.9.0"}
 aiohttp = "^3.8.5"
 pandas = "^2.1.0"
 plotly = "^5.17.0"
+streamlit = "^1.27.1"
+streamlit-searchbox = "^0.1.5"
+simstring-fast = "^0.2.7"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"

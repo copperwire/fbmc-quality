@@ -40,11 +40,11 @@ def compute_linearisation_error(
     return rel_error
 
 
-def compute_weghted_loading(
+def compute_cnec_vulnerability_to_err(
     cnec_data: DataFrame[CnecData],
     target_net_positions: DataFrame[NetPosition],
     target_flow: "pd.Series[pd.Float64Dtype]",
-) -> tuple[float, float]:
+) -> pd.DataFrame:
     r"""returns the mean value of the vulnerability score, and mean basecase relative margin
 
     vulnerability is the fraction of linearisation-error to the margin in MW in the target situation:
@@ -58,11 +58,18 @@ def compute_weghted_loading(
         target_flow (pd.Series[pd.Float64Dtype]): target for computing linearisation error
 
     Returns:
-        tuple[float, float]: vulnerability score, basecase relative margin
+        pd.DataFrame: frame with vulnerability score, basecase_relative_margin
     """
     linearisation_error = compute_linearisation_error(cnec_data, target_net_positions, target_flow).abs()
     ram_obs = cnec_data[JaoData.fmax] - target_flow
     ram_bc = cnec_data[JaoData.fmax] - cnec_data[JaoData.fref]
-    vulnerability_score = (linearisation_error / ram_obs).abs().mean()
-    basecase_relative_margin = (ram_obs / ram_bc).abs().mean()
-    return vulnerability_score, basecase_relative_margin
+    vulnerability_score = (linearisation_error / ram_obs).abs()
+    basecase_relative_margin = (ram_obs / ram_bc).abs()
+
+    return_frame = pd.DataFrame(
+        {
+            "vulnerability_score": vulnerability_score,
+            "basecase_relative_margin": basecase_relative_margin,
+        }
+    )
+    return return_frame

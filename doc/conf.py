@@ -9,7 +9,7 @@
 project = "FBMC quality analysis"
 copyright = "2023, Robert Solli, Kristian Authen"
 author = "Robert Solli, Kristian Authen"
-release = "0.1.0"
+release = "0.1.3"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

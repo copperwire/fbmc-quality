@@ -4,6 +4,14 @@ Welcome to FBMC quality analysis's documentation!
 
 =================================================
 
+
+Indices and tables
+-------------------
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+
 Introduction
 ------------
 
@@ -86,10 +94,3 @@ Module reference
     :members:
     :inherited-members: DataFrameModel, BaseModel, BaseModelConfig
     :exclude-members: Config
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

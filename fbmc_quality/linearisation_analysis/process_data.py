@@ -30,7 +30,7 @@ def make_train_and_targets(cnec_data: CnecDataAndNPS) -> PlotData:
         (cnec_data.observed_flow - expected_observed_flow).to_numpy(),
     )
 
-    np.nan_to_num(x, copy=False, nan=0)
+    np.nan_to_num(x, copy=False, nan=1)
     return PlotData(expected_observed_flow, unweighted_delta_net_pos, x, y)
 
 

@@ -79,7 +79,9 @@ def load_jao_data_basecase_nps_and_observed_nps(start: date, end: date) -> JaoDa
 
 
 def load_data_for_internal_cnec(
-    cnecName: str, fetch_cnec_data: Callable[[date, date, str], pd.DataFrame | None], jaodata_and_net_positions: JaoDataAndNPS
+    cnecName: str,
+    fetch_cnec_data: Callable[[date, date, str], pd.DataFrame | None],
+    jaodata_and_net_positions: JaoDataAndNPS,
 ) -> CnecDataAndNPS | None:
     """Loads data for a given cnec from its name as it appears in the JAO API.
     Takes a callable to fetch data from an arbitrary source

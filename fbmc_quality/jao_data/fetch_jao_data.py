@@ -12,9 +12,10 @@ import aiohttp
 import pandas as pd
 import psutil
 from click import FileError
-from fbmc_quality.dataframe_schemas.schemas import JaoData
 from joblib import Parallel, delayed
 from pandera.typing import DataFrame
+
+from fbmc_quality.dataframe_schemas.schemas import JaoData
 
 warnings.filterwarnings(
     "ignore",
@@ -157,6 +158,22 @@ def try_jao_cache_before_async(
 def fetch_jao_dataframe_timeseries(
     from_time: timedata, to_time: timedata, write_path: Path | None = None
 ) -> DataFrame[JaoData] | None:
+    """Reads JAO data from the API and returns the corresponding frame.
+    Pulls data from cache in the `write_path`
+
+    Args:
+        from_time (timedata): from when to pull data
+        to_time (timedata): to when to pull data
+        write_path (Path | None, optional): Path to use for data caching. Defaults to None,
+            and uses `~/.linearisation_error`.
+
+    Raises:
+        FileError: If `write_path` does not exist
+
+    Returns:
+        DataFrame[JaoData] | None: pandas Dataframe with JAO date,
+            returns `None` if no data is found in API or cache
+    """
     if write_path is None:
         default_folder_path = Path.home() / Path(".flowbased_data/jao")
         create_default_folder(default_folder_path)

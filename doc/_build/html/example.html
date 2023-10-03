@@ -14,30 +14,100 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="prev" title="Command Line Interface" href="clis.html" />
-   
+
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
-  
-  
+
+
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
   </head><body>
-  
+
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          
+
 
           <div class="body" role="main">
-            
+
   <section id="example-uses-of-the-codebase">
 <h1>Example uses of the codebase<a class="headerlink" href="#example-uses-of-the-codebase" title="Link to this heading">¶</a></h1>
-<section id="example-using-the-package-and-apis">
-<h2>Example using the package and APIs<a class="headerlink" href="#example-using-the-package-and-apis" title="Link to this heading">¶</a></h2>
-<p>The simplest use of the repository is to plot the linearsiation error for a period in, lets begin:</p>
+<section id="pulling-net-positions-from-entsoe-transparency">
+<h2>Pulling net positions from ENTSOE-Transparency<a class="headerlink" href="#pulling-net-positions-from-entsoe-transparency" title="Link to this heading">¶</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>To pull data from the ENTSOE-Transparency you need to set API keys as noted in the <a class="reference internal" href="configuration.html#id1"><span class="std std-ref">configuration guide</span></a>.</p>
+</div>
+<p>Pulling data from JAO and ENTSOE-Transparency is the first step of the analysis. The data can be pulled from
+the remote APIs or from the local cache. The local cache is by default stored at <cite>~/.linearisation_error</cite> and contains hourly snapshots of data.
+To pull data from JAO and compute the Net Positions in the Base Case (Common Grid Model Net Positions):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">date</span>
+<span class="kn">from</span> <span class="nn">fbmc_quality.jao_data.analyse_jao_data</span> <span class="kn">import</span> <span class="n">compute_basecase_net_pos</span>
+<span class="kn">from</span> <span class="nn">fbmc_quality.jao_data.fetch_jao_data</span> <span class="kn">import</span> <span class="n">fetch_jao_dataframe_timeseries</span>
+
+<span class="n">start</span> <span class="o">=</span> <span class="n">date</span><span class="p">(</span><span class="mi">2023</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">end</span> <span class="o">=</span> <span class="n">date</span><span class="p">(</span><span class="mi">2023</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="n">dataframe</span> <span class="o">=</span> <span class="n">fetch_jao_dataframe_timeseries</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">dataframe</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;No data&quot;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">dataframe</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+
+<span class="n">basecase_nps</span> <span class="o">=</span> <span class="n">compute_basecase_net_pos</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">basecase_nps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;No data&quot;</span><span class="p">)</span>
+
+<span class="n">basecase_nps</span><span class="p">[</span><span class="s1">&#39;NO2&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The <code class="code docutils literal notranslate"><span class="pre">dataframe</span></code> from JAO contains the FBMC results for all CNECs for a given hour. This includes the zonal PTDFs that we
+use to compute the Base Case Net Positions. These are computed by summing up the cross border flows for each zonal border.</p>
+<p>The API for pulling from ENTSOE-Transparency has a very similar API, you pull observed net positions with this snippet:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">fbmc_quality.jao_data</span> <span class="kn">import</span> <span class="n">compute_basecase_net_pos</span>
+<span class="kn">from</span> <span class="nn">fbmc_quality.jao_data</span> <span class="kn">import</span> <span class="n">fetch_jao_dataframe_timeseries</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">date</span>
+
+<span class="n">start</span> <span class="o">=</span> <span class="n">date</span><span class="p">(</span><span class="mi">2023</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">end</span> <span class="o">=</span> <span class="n">date</span><span class="p">(</span><span class="mi">2023</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="n">observed_nps</span> <span class="o">=</span> <span class="n">fetch_net_position_from_crossborder_flows</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">observed_nps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;No data&quot;</span><span class="p">)</span>
+
+<span class="n">observed_nps</span><span class="p">[</span><span class="s1">&#39;NO2&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>And pulling the data from a single cross border CNEC is similarly concise:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">fbmc_quality.entsoe_data</span> <span class="kn">import</span> <span class="n">fetch_net_position_from_crossborder_flows</span><span class="p">,</span> <span class="n">fetch_observed_entsoe_data_for_cnec</span>
+<span class="kn">from</span> <span class="nn">fbmc_quality.enums</span> <span class="kn">import</span> <span class="n">BiddingZonesEnum</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">date</span>
+
+<span class="n">start</span> <span class="o">=</span> <span class="n">date</span><span class="p">(</span><span class="mi">2023</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">end</span> <span class="o">=</span> <span class="n">date</span><span class="p">(</span><span class="mi">2023</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="n">observed_nps</span> <span class="o">=</span> <span class="n">fetch_net_position_from_crossborder_flows</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">observed_nps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;No data&quot;</span><span class="p">)</span>
+
+<span class="n">observed_nps</span><span class="p">[</span><span class="s1">&#39;NO2&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+
+<span class="n">no1_no2_observed_flow</span> <span class="o">=</span> <span class="n">fetch_observed_entsoe_data_for_cnec</span><span class="p">(</span><span class="n">from_area</span><span class="o">=</span><span class="n">BiddingZonesEnum</span><span class="o">.</span><span class="n">NO2</span><span class="p">,</span> <span class="n">to_area</span><span class="o">=</span><span class="n">BiddingZonesEnum</span><span class="o">.</span><span class="n">NO1</span><span class="p">,</span> <span class="n">start_date</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end_date</span><span class="o">=</span><span class="n">end</span><span class="p">)</span>
+<span class="n">no1_no2_observed_flow</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="computing-the-linearisation-error-using-the-api">
+<h2>Computing the linearisation error using the API<a class="headerlink" href="#computing-the-linearisation-error-using-the-api" title="Link to this heading">¶</a></h2>
+<p>To plot the linearsiation error for a period we need to pull JAO data and observed data to measure against.
+This section uses the method in the previous sub-section to pull data to compute flow and net positions.
+Lets begin:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">fbmc_quality.linearisation_analysis</span> <span class="kn">import</span> <span class="n">compute_linearisation_error</span>
 <span class="kn">from</span> <span class="nn">fbmc_quality.linearisation_analysis</span> <span class="kn">import</span> <span class="n">compute_linearisation_error</span><span class="p">,</span> <span class="n">compute_linearised_flow</span>
-<span class="kn">from</span> <span class="nn">fbmc_quality.linearisation_analysis</span> <span class="kn">import</span> <span class="n">load_data_for_cnec</span><span class="p">,</span> <span class="n">load_jao_data_basecase_nps_and_observed_nps</span>
+<span class="kn">from</span> <span class="nn">fbmc_quality.linearisation_analysis</span> <span class="kn">import</span> <span class="n">load_data_for_corridor_cnec</span><span class="p">,</span> <span class="n">load_jao_data_basecase_nps_and_observed_nps</span>
 
 <span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">date</span>
 <span class="kn">import</span> <span class="nn">plotly.express</span> <span class="k">as</span> <span class="nn">px</span>
@@ -48,14 +118,52 @@
 <span class="n">end</span> <span class="o">=</span> <span class="n">date</span><span class="p">(</span><span class="mi">2023</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 <span class="n">data</span> <span class="o">=</span> <span class="n">load_jao_data_basecase_nps_and_observed_nps</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
 <span class="n">cnec_name</span> <span class="o">=</span><span class="s1">&#39;NO3-&gt;SE2&#39;</span>
-<span class="n">cnec_data</span> <span class="o">=</span> <span class="n">load_data_for_cnec</span><span class="p">(</span>
+<span class="n">cnec_data</span> <span class="o">=</span> <span class="n">load_data_for_corridor_cnec</span><span class="p">(</span>
     <span class="n">cnec_name</span><span class="p">,</span>
     <span class="n">data</span>
 <span class="p">)</span>
 <span class="k">if</span> <span class="n">cnec_data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No data found&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="fbmc_quality.linearisation_analysis.load_data_for_corridor_cnec">
+<span class="sig-prename descclassname"><span class="pre">fbmc_quality.linearisation_analysis.</span></span><span class="sig-name descname"><span class="pre">load_data_for_corridor_cnec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cnecName</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jaodata_and_net_positions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.linearisation_analysis.load_data_for_corridor_cnec" title="Link to this definition">¶</a></dt>
+<dd><p>Loads data for a given cnec from its name as it appears in the  JAO API</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cnecName</strong> (<em>str</em>) – Name of the CNEC as it appears in the JAO API</p></li>
+<li><p><strong>jao_and_entsoe_data</strong> (<a class="reference internal" href="index.html#fbmc_quality.linearisation_analysis.dataclasses.JaoDataAndNPS" title="fbmc_quality.linearisation_analysis.dataclasses.JaoDataAndNPS"><em>JaoDataAndNPS</em></a>) – Data from JAO and Entsoe APIs</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the cnecName is a border CNEC - raises if no mapping to ENTSOE transparency is found</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CNEC data if any is found</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="index.html#fbmc_quality.linearisation_analysis.dataclasses.CnecDataAndNPS" title="fbmc_quality.linearisation_analysis.dataclasses.CnecDataAndNPS">CnecDataAndNPS</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
 
-<span class="n">lin_err</span> <span class="o">=</span> <span class="n">compute_linearisation_error</span><span class="p">(</span><span class="n">cnec_data</span><span class="o">.</span><span class="n">cnecData</span><span class="p">,</span> <span class="n">cnec_data</span><span class="o">.</span><span class="n">observedNPs</span><span class="p">,</span> <span class="n">cnec_data</span><span class="o">.</span><span class="n">observed_flow</span><span class="p">[</span><span class="s1">&#39;flow&#39;</span><span class="p">])</span>
+<p>and,</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="fbmc_quality.linearisation_analysis.load_jao_data_basecase_nps_and_observed_nps">
+<span class="sig-prename descclassname"><span class="pre">fbmc_quality.linearisation_analysis.</span></span><span class="sig-name descname"><span class="pre">load_jao_data_basecase_nps_and_observed_nps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.linearisation_analysis.load_jao_data_basecase_nps_and_observed_nps" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="index.html#fbmc_quality.linearisation_analysis.dataclasses.JaoDataAndNPS" title="fbmc_quality.linearisation_analysis.dataclasses.JaoDataAndNPS"><code class="xref py py-class docutils literal notranslate"><span class="pre">JaoDataAndNPS</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>returns <cite>Dataclass</cite> like <cite>NamedTuples</cite>. These containers are used in the workflow to pass data in a structured way.</p>
+<p>Continuing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lin_err</span> <span class="o">=</span> <span class="n">compute_linearisation_error</span><span class="p">(</span><span class="n">cnec_data</span><span class="o">.</span><span class="n">cnecData</span><span class="p">,</span> <span class="n">cnec_data</span><span class="o">.</span><span class="n">observedNPs</span><span class="p">,</span> <span class="n">cnec_data</span><span class="o">.</span><span class="n">observed_flow</span><span class="p">[</span><span class="s1">&#39;flow&#39;</span><span class="p">])</span>
 <span class="n">lin_err_frame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
     <span class="p">{</span>
         <span class="s1">&#39;Linearisation Error&#39;</span><span class="p">:</span> <span class="n">lin_err</span><span class="p">,</span>
@@ -76,7 +184,7 @@
 <span class="p">)</span>
 <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
     <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
-        <span class="n">size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>  <span class="c1"># Set the font size here</span>
+        <span class="n">size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
     <span class="p">)</span>
 <span class="p">)</span>
 <span class="n">fig</span><span class="o">.</span><span class="n">update_traces</span><span class="p">(</span><span class="n">line</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;width&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">})</span>
@@ -88,7 +196,7 @@
 
 
           </div>
-          
+
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
@@ -109,7 +217,8 @@
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="clis.html">Command Line Interface</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Example uses of the codebase</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#example-using-the-package-and-apis">Example using the package and APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pulling-net-positions-from-entsoe-transparency">Pulling net positions from ENTSOE-Transparency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#computing-the-linearisation-error-using-the-api">Computing the linearisation error using the API</a></li>
 </ul>
 </li>
 </ul>
@@ -146,18 +255,18 @@
     </div>
     <div class="footer">
       &copy;2023, Robert Solli, Kristian Authen.
-      
+
       |
       Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
-      
+
       |
       <a href="_sources/example.rst.txt"
           rel="nofollow">Page source</a>
     </div>
 
-    
 
-    
+
+
   </body>
 </html>

@@ -14,22 +14,22 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Installation" href="installing.html" />
-   
+
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
-  
-  
+
+
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
   </head><body>
-  
+
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          
+
 
           <div class="body" role="main">
-            
+
   <p>Welcome to FBMC quality analysis’s documentation!</p>
 <hr class="docutils" />
 <section id="module-fbmc_quality">
@@ -50,7 +50,8 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="example.html">Example uses of the codebase</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="example.html#example-using-the-package-and-apis">Example using the package and APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example.html#pulling-net-positions-from-entsoe-transparency">Pulling net positions from ENTSOE-Transparency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example.html#computing-the-linearisation-error-using-the-api">Computing the linearisation error using the API</a></li>
 </ul>
 </li>
 </ul>
@@ -127,8 +128,11 @@
 
 <dl class="py class" id="module-fbmc_quality.linearisation_analysis.dataclasses">
 <dt class="sig sig-object py" id="fbmc_quality.linearisation_analysis.dataclasses.CnecDataAndNPS">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fbmc_quality.linearisation_analysis.dataclasses.</span></span><span class="sig-name descname"><span class="pre">CnecDataAndNPS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cnec_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cnec_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cnecData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basecaseNPs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observedNPs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observed_flow</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.linearisation_analysis.dataclasses.CnecDataAndNPS" title="Link to this definition">¶</a></dt>
-<dd><dl class="py attribute">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fbmc_quality.linearisation_analysis.dataclasses.</span></span><span class="sig-name descname"><span class="pre">CnecDataAndNPS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cnec_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cnec_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cnecData</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span><span class="p"><span class="pre">[</span></span><span class="pre">CnecData</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basecaseNPs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span><span class="p"><span class="pre">[</span></span><span class="pre">NetPosition</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observedNPs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span><span class="p"><span class="pre">[</span></span><span class="pre">NetPosition</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observed_flow</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.linearisation_analysis.dataclasses.CnecDataAndNPS" title="Link to this definition">¶</a></dt>
+<dd><p>Dataclass conaining pandas Dataframes of data from JAO and observed and basecase Net Positions,
+as well as observed flow.
+For a single CNEC.</p>
+<dl class="py attribute">
 <dt class="sig sig-object py" id="fbmc_quality.linearisation_analysis.dataclasses.CnecDataAndNPS.basecaseNPs">
 <span class="sig-name descname"><span class="pre">basecaseNPs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">DataFrame</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">NetPosition</span></code><span class="pre">]</span></em><a class="headerlink" href="#fbmc_quality.linearisation_analysis.dataclasses.CnecDataAndNPS.basecaseNPs" title="Link to this definition">¶</a></dt>
 <dd><p>Alias for field number 3</p>
@@ -168,8 +172,9 @@
 
 <dl class="py class">
 <dt class="sig sig-object py" id="fbmc_quality.linearisation_analysis.dataclasses.JaoDataAndNPS">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fbmc_quality.linearisation_analysis.dataclasses.</span></span><span class="sig-name descname"><span class="pre">JaoDataAndNPS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jaoData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basecaseNPs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observedNPs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.linearisation_analysis.dataclasses.JaoDataAndNPS" title="Link to this definition">¶</a></dt>
-<dd><dl class="py attribute">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fbmc_quality.linearisation_analysis.dataclasses.</span></span><span class="sig-name descname"><span class="pre">JaoDataAndNPS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jaoData</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span><span class="p"><span class="pre">[</span></span><span class="pre">JaoData</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basecaseNPs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span><span class="p"><span class="pre">[</span></span><span class="pre">NetPosition</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observedNPs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span><span class="p"><span class="pre">[</span></span><span class="pre">NetPosition</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.linearisation_analysis.dataclasses.JaoDataAndNPS" title="Link to this definition">¶</a></dt>
+<dd><p>Dataclass conaining pandas Dataframes of data from JAO and observed and basecase Net Positions</p>
+<dl class="py attribute">
 <dt class="sig sig-object py" id="fbmc_quality.linearisation_analysis.dataclasses.JaoDataAndNPS.basecaseNPs">
 <span class="sig-name descname"><span class="pre">basecaseNPs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">DataFrame</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">NetPosition</span></code><span class="pre">]</span></em><a class="headerlink" href="#fbmc_quality.linearisation_analysis.dataclasses.JaoDataAndNPS.basecaseNPs" title="Link to this definition">¶</a></dt>
 <dd><p>Alias for field number 1</p>
@@ -191,8 +196,10 @@
 
 <dl class="py class">
 <dt class="sig sig-object py" id="fbmc_quality.linearisation_analysis.dataclasses.PlotData">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fbmc_quality.linearisation_analysis.dataclasses.</span></span><span class="sig-name descname"><span class="pre">PlotData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expected_observed_flow</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unweighted_delta_net_pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.linearisation_analysis.dataclasses.PlotData" title="Link to this definition">¶</a></dt>
-<dd><dl class="py attribute">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fbmc_quality.linearisation_analysis.dataclasses.</span></span><span class="sig-name descname"><span class="pre">PlotData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expected_observed_flow</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unweighted_delta_net_pos</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span><span class="p"><span class="pre">[</span></span><span class="pre">NetPosition</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.linearisation_analysis.dataclasses.PlotData" title="Link to this definition">¶</a></dt>
+<dd><p>Simple container used for plotting when investigating the difference
+between basecase Net Positions and an observed state.</p>
+<dl class="py attribute">
 <dt class="sig sig-object py" id="fbmc_quality.linearisation_analysis.dataclasses.PlotData.expected_observed_flow">
 <span class="sig-name descname"><span class="pre">expected_observed_flow</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">Series</span></code></em><a class="headerlink" href="#fbmc_quality.linearisation_analysis.dataclasses.PlotData.expected_observed_flow" title="Link to this definition">¶</a></dt>
 <dd><p>Alias for field number 0</p>
@@ -219,6 +226,51 @@
 </dd></dl>
 
 <dl class="py function" id="module-fbmc_quality.linearisation_analysis.process_data">
+<dt class="sig sig-object py" id="fbmc_quality.linearisation_analysis.process_data.load_data_for_corridor_cnec">
+<span class="sig-prename descclassname"><span class="pre">fbmc_quality.linearisation_analysis.process_data.</span></span><span class="sig-name descname"><span class="pre">load_data_for_corridor_cnec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cnecName</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jaodata_and_net_positions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.linearisation_analysis.process_data.load_data_for_corridor_cnec" title="Link to this definition">¶</a></dt>
+<dd><p>Loads data for a given cnec from its name as it appears in the  JAO API</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cnecName</strong> (<em>str</em>) – Name of the CNEC as it appears in the JAO API</p></li>
+<li><p><strong>jao_and_entsoe_data</strong> (<a class="reference internal" href="#fbmc_quality.linearisation_analysis.dataclasses.JaoDataAndNPS" title="fbmc_quality.linearisation_analysis.dataclasses.JaoDataAndNPS"><em>JaoDataAndNPS</em></a>) – Data from JAO and Entsoe APIs</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the cnecName is a border CNEC - raises if no mapping to ENTSOE transparency is found</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CNEC data if any is found</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#fbmc_quality.linearisation_analysis.dataclasses.CnecDataAndNPS" title="fbmc_quality.linearisation_analysis.dataclasses.CnecDataAndNPS">CnecDataAndNPS</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fbmc_quality.linearisation_analysis.process_data.load_data_for_internal_cnec">
+<span class="sig-prename descclassname"><span class="pre">fbmc_quality.linearisation_analysis.process_data.</span></span><span class="sig-name descname"><span class="pre">load_data_for_internal_cnec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cnecName</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fetch_cnec_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jaodata_and_net_positions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.linearisation_analysis.process_data.load_data_for_internal_cnec" title="Link to this definition">¶</a></dt>
+<dd><p>Loads data for a given cnec from its name as it appears in the JAO API.
+Takes a callable to fetch data from an arbitrary source</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cnecName</strong> (<em>str</em>) – Name of the CNEC as it appears in the JAO API</p></li>
+<li><p><strong>fetch_cnec_data</strong> (<em>Callable</em><em>[</em><em>[</em><em>date</em><em>, </em><em>date</em><em>, </em><em>str</em><em>]</em><em>, </em><em>pd.DataFrame</em><em>]</em>) – Callable that queries for cnec data</p></li>
+<li><p><strong>jaodata_and_net_positions</strong> (<a class="reference internal" href="#fbmc_quality.linearisation_analysis.dataclasses.JaoDataAndNPS" title="fbmc_quality.linearisation_analysis.dataclasses.JaoDataAndNPS"><em>JaoDataAndNPS</em></a>) – Data from JAO and target Net Positions</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Data on the CNEC and with relevant net_positions</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#fbmc_quality.linearisation_analysis.dataclasses.CnecDataAndNPS" title="fbmc_quality.linearisation_analysis.dataclasses.CnecDataAndNPS">CnecDataAndNPS</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="fbmc_quality.linearisation_analysis.process_data.transform_delta_np_and_ptdfs_to_numpy">
 <span class="sig-prename descclassname"><span class="pre">fbmc_quality.linearisation_analysis.process_data.</span></span><span class="sig-name descname"><span class="pre">transform_delta_np_and_ptdfs_to_numpy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unweighted_delta_np</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cnec_ds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.linearisation_analysis.process_data.transform_delta_np_and_ptdfs_to_numpy" title="Link to this definition">¶</a></dt>
 <dd><p>takes net position and ptdf data array and concatenates them to a numpy array.
@@ -265,7 +317,7 @@ Defaults to None, which will compute for ALL bidding zones.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="fbmc_quality.jao_data.analyse_jao_data.get_cnec_id_from_name">
-<span class="sig-prename descclassname"><span class="pre">fbmc_quality.jao_data.analyse_jao_data.</span></span><span class="sig-name descname"><span class="pre">get_cnec_id_from_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cnecName</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.jao_data.analyse_jao_data.get_cnec_id_from_name" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">fbmc_quality.jao_data.analyse_jao_data.</span></span><span class="sig-name descname"><span class="pre">get_cnec_id_from_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cnecName</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alternative_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'NO_NO2_DE-&gt;NO2':</span> <span class="pre">['DE-&gt;NO2'],</span> <span class="pre">'NO_NO2_DK1-&gt;NO2':</span> <span class="pre">['DK1-&gt;NO2'],</span> <span class="pre">'NO_NO2_NL-&gt;NO2':</span> <span class="pre">['NL-&gt;NO2']}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.jao_data.analyse_jao_data.get_cnec_id_from_name" title="Link to this definition">¶</a></dt>
 <dd><p>Gets the CNEC-ID for a given cnec name. Returns the id(s) associated with this name
 at the 0th timestep of the dataset</p>
 <dl class="field-list simple">
@@ -273,6 +325,7 @@ at the 0th timestep of the dataset</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>cnecName</strong> (<em>str</em>) – CNEC to find the correspondig ID for</p></li>
 <li><p><strong>dataset</strong> (<em>DataFrame</em><em>[</em><em>JaoData</em><em>]</em>) – Dataset of CNEC information. See <cite>make_data_array_from_datetime</cite> for the schema</p></li>
+<li><p><strong>alternative_names</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>list</em><em>[</em><em>str</em><em>]</em><em>]</em>) – mapping of names that may have changed</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -286,7 +339,7 @@ at the 0th timestep of the dataset</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="fbmc_quality.jao_data.analyse_jao_data.get_cross_border_cnec_ids">
-<span class="sig-prename descclassname"><span class="pre">fbmc_quality.jao_data.analyse_jao_data.</span></span><span class="sig-name descname"><span class="pre">get_cross_border_cnec_ids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bidding_zones</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.jao_data.analyse_jao_data.get_cross_border_cnec_ids" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">fbmc_quality.jao_data.analyse_jao_data.</span></span><span class="sig-name descname"><span class="pre">get_cross_border_cnec_ids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bidding_zones</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bidding_zone_cnec_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{BiddingZonesEnum.DK1:</span> <span class="pre">['Border_CNEC_DK1_DE-DK1',</span> <span class="pre">'Border_CNEC_DK1_KS-DK1',</span> <span class="pre">'Border_CNEC_DK1_SB-DK1',</span> <span class="pre">'Border_CNEC_DK1_CO-DK1',</span> <span class="pre">'Border_CNEC_DK1_SK-DK1'],</span> <span class="pre">BiddingZonesEnum.DK1_CO:</span> <span class="pre">['Border_CNEC_DK1-DK1_CO'],</span> <span class="pre">BiddingZonesEnum.DK1_DE:</span> <span class="pre">['Border_CNEC_DK1-DK1_DE'],</span> <span class="pre">BiddingZonesEnum.DK1_KS:</span> <span class="pre">['Border_CNEC_DK1-DK1_KS'],</span> <span class="pre">BiddingZonesEnum.DK1_SB:</span> <span class="pre">['Border_CNEC_DK1-DK1_SB'],</span> <span class="pre">BiddingZonesEnum.DK1_SK:</span> <span class="pre">['Border_CNEC_DK1-DK1_SK'],</span> <span class="pre">BiddingZonesEnum.DK2:</span> <span class="pre">['Border_CNEC_DK2_SB-DK2',</span> <span class="pre">'Border_CNEC_DK2_KO-DK2',</span> <span class="pre">'Border_CNEC_SE4-DK2'],</span> <span class="pre">BiddingZonesEnum.FI:</span> <span class="pre">['Border_CNEC_NO4-FI',</span> <span class="pre">'Border_CNEC_SE1-FI',</span> <span class="pre">'Border_CNEC_FI_FS-FI',</span> <span class="pre">'Border_CNEC_FI_EL-FI'],</span> <span class="pre">BiddingZonesEnum.FI_EL:</span> <span class="pre">['Border_CNEC_FI-FI_EL'],</span> <span class="pre">BiddingZonesEnum.FI_FS:</span> <span class="pre">['Border_CNEC_FI-FI_FS'],</span> <span class="pre">BiddingZonesEnum.NO1:</span> <span class="pre">['NO2-&gt;NO1',</span> <span class="pre">'NO3-&gt;NO1',</span> <span class="pre">'NO5-&gt;NO1',</span> <span class="pre">'SE3-&gt;NO1'],</span> <span class="pre">BiddingZonesEnum.NO2:</span> <span class="pre">['NO_NO2_NL-&gt;NO2',</span> <span class="pre">'NO_NO2_DE-&gt;NO2',</span> <span class="pre">'NO_NO2_DK1-&gt;NO2',</span> <span class="pre">'NO5-&gt;NO2',</span> <span class="pre">'NO1-&gt;NO2'],</span> <span class="pre">BiddingZonesEnum.NO2_ND:</span> <span class="pre">['Border_CNEC_NO2-NO2_ND'],</span> <span class="pre">BiddingZonesEnum.NO2_NK:</span> <span class="pre">['Border_CNEC_NO2-NO2_NK'],</span> <span class="pre">BiddingZonesEnum.NO2_SK:</span> <span class="pre">['Border_CNEC_NO2-NO2_SK'],</span> <span class="pre">BiddingZonesEnum.NO3:</span> <span class="pre">['NO1-&gt;NO3',</span> <span class="pre">'NO5-&gt;NO3',</span> <span class="pre">'NO4-&gt;NO3',</span> <span class="pre">'SE2-&gt;NO3'],</span> <span class="pre">BiddingZonesEnum.NO4:</span> <span class="pre">['SE1-&gt;NO4',</span> <span class="pre">'FI-&gt;NO4',</span> <span class="pre">'NO3-&gt;NO4',</span> <span class="pre">'SE2-&gt;NO4'],</span> <span class="pre">BiddingZonesEnum.NO5:</span> <span class="pre">['NO1-&gt;NO5',</span> <span class="pre">'NO3-&gt;NO5',</span> <span class="pre">'NO2-&gt;NO5'],</span> <span class="pre">BiddingZonesEnum.SE1:</span> <span class="pre">['Border_CNEC_NO4-SE1',</span> <span class="pre">'Border_CNEC_SE2-SE1',</span> <span class="pre">'Border_CNEC_FI-SE1'],</span> <span class="pre">BiddingZonesEnum.SE2:</span> <span class="pre">['Border_CNEC_SE1-SE2',</span> <span class="pre">'Border_CNEC_SE3-SE2',</span> <span class="pre">'Border_CNEC_NO4-SE2',</span> <span class="pre">'Border_CNEC_NO3-SE2'],</span> <span class="pre">BiddingZonesEnum.SE3:</span> <span class="pre">['Border_CNEC_NO1-SE3',</span> <span class="pre">'Border_CNEC_SE3_KS-SE3',</span> <span class="pre">'Border_CNEC_SE3_FS-SE3',</span> <span class="pre">'Border_CNEC_SE3_SWL-SE3',</span> <span class="pre">'Border_CNEC_SE4-SE3',</span> <span class="pre">'Border_CNEC_SE2-SE3'],</span> <span class="pre">BiddingZonesEnum.SE3_FS:</span> <span class="pre">['Border_CNEC_SE3-SE3_FS'],</span> <span class="pre">BiddingZonesEnum.SE3_KS:</span> <span class="pre">['Border_CNEC_SE3-SE3_KS'],</span> <span class="pre">BiddingZonesEnum.SE3_SWL:</span> <span class="pre">['Border_CNEC_SE3-SE3_SWL'],</span> <span class="pre">BiddingZonesEnum.SE4:</span> <span class="pre">['Border_CNEC_SE3-SE4',</span> <span class="pre">'Border_CNEC_SE4_BC-SE4',</span> <span class="pre">'Border_CNEC_SE4_SP-SE4',</span> <span class="pre">'Border_CNEC_SE4_NB-SE4',</span> <span class="pre">'Border_CNEC_SE4_SWL-SE4',</span> <span class="pre">'Border_CNEC_DK2-SE4'],</span> <span class="pre">BiddingZonesEnum.SE4_BC:</span> <span class="pre">['Border_CNEC_SE4-SE4_BC'],</span> <span class="pre">BiddingZonesEnum.SE4_NB:</span> <span class="pre">['Border_CNEC_SE4-SE4_NB'],</span> <span class="pre">BiddingZonesEnum.SE4_SP:</span> <span class="pre">['Border_CNEC_SE4-SE4_SP'],</span> <span class="pre">BiddingZonesEnum.SE4_SWL:</span> <span class="pre">['Border_CNEC_SE4-SE4_SWL']}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.jao_data.analyse_jao_data.get_cross_border_cnec_ids" title="Link to this definition">¶</a></dt>
 <dd><p>From a dataset find the cnec ids (a coordinate in the DS) that correspond to the cross border flows.
 The mapping is maintained in BIDDING_ZONE_CNEC_MAP</p>
 <dl class="field-list simple">
@@ -295,6 +348,16 @@ The mapping is maintained in BIDDING_ZONE_CNEC_MAP</p>
 <li><p><strong>ds</strong> (<em>DataFrame</em><em>[</em><em>JaoData</em><em>]</em>) – Dataset in which to find the cross border flows.
 Must have index cnec_id, and column cnecName</p></li>
 <li><p><strong>bidding_zones</strong> (<a class="reference internal" href="#fbmc_quality.enums.bidding_zones.BiddingZonesEnum" title="fbmc_quality.enums.bidding_zones.BiddingZonesEnum"><em>BiddingZonesEnum</em></a><em> | </em><em>list</em><em>[</em><a class="reference internal" href="#fbmc_quality.dataframe_schemas.BiddingZones" title="fbmc_quality.dataframe_schemas.BiddingZones"><em>BiddingZones</em></a><em>] </em><em>| </em><em>None</em><em>, </em><em>optional</em>) – Bidding zones for which to find cross border cnecs. Defaults to None.</p></li>
+<li><p><strong>bidding_zone_cnec_map</strong> (<em>dict</em><em>[</em><a class="reference internal" href="#fbmc_quality.enums.bidding_zones.BiddingZonesEnum" title="fbmc_quality.enums.bidding_zones.BiddingZonesEnum"><em>BiddingZonesEnum</em></a><em>, </em><em>list</em><em>[</em><em>str</em><em>]</em><em>]</em>) – Mapping from bidding zone to cnec names, i.e.
+&gt;&gt;&gt; bidding_zone_cnec_map = {
+&gt;&gt;&gt; BiddingZonesEnum.NO1: [
+&gt;&gt;&gt;     “NO2-&gt;NO1”,
+&gt;&gt;&gt;     “NO3-&gt;NO1”,
+&gt;&gt;&gt;     “NO5-&gt;NO1”,
+&gt;&gt;&gt;     “SE3-&gt;NO1”,
+&gt;&gt;&gt; ],
+&gt;&gt;&gt; …
+&gt;&gt;&gt; }</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -307,6 +370,36 @@ Must have index cnec_id, and column cnecName</p></li>
 </dd></dl>
 
 <dl class="py function" id="module-fbmc_quality.jao_data.fetch_jao_data">
+<dt class="sig sig-object py" id="fbmc_quality.jao_data.fetch_jao_data.fetch_jao_dataframe_timeseries">
+<span class="sig-prename descclassname"><span class="pre">fbmc_quality.jao_data.fetch_jao_data.</span></span><span class="sig-name descname"><span class="pre">fetch_jao_dataframe_timeseries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">from_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.jao_data.fetch_jao_data.fetch_jao_dataframe_timeseries" title="Link to this definition">¶</a></dt>
+<dd><p>Reads JAO data from the API and returns the corresponding frame.
+Pulls data from cache in the <cite>write_path</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>from_time</strong> (<em>timedata</em>) – from when to pull data</p></li>
+<li><p><strong>to_time</strong> (<em>timedata</em>) – to when to pull data</p></li>
+<li><p><strong>write_path</strong> (<em>Path</em><em> | </em><em>None</em><em>, </em><em>optional</em>) – Path to use for data caching. Defaults to None,
+and uses <cite>~/.linearisation_error</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>FileError</strong> – If <cite>write_path</cite> does not exist</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>pandas Dataframe with JAO date,</dt><dd><p>returns <cite>None</cite> if no data is found in API or cache</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame[JaoData] | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="fbmc_quality.jao_data.fetch_jao_data.get_ptdfs">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fbmc_quality.jao_data.fetch_jao_data.</span></span><span class="sig-name descname"><span class="pre">get_ptdfs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.jao_data.fetch_jao_data.get_ptdfs" title="Link to this definition">¶</a></dt>
 <dd><p>get PTDFs from JAO, query by datetime</p>
@@ -324,7 +417,55 @@ Must have index cnec_id, and column cnecName</p></li>
 </dd></dl>
 
 <dl class="py function" id="module-fbmc_quality.entsoe_data.fetch_entsoe_data">
-<span id="module-fbmc_quality.entsoe_data"></span><span id="module-fbmc_quality.jao_data.jao_store_cli"></span><dt class="sig sig-object py" id="fbmc_quality.entsoe_data.fetch_entsoe_data.get_cross_border_flow">
+<span id="module-fbmc_quality.entsoe_data"></span><span id="module-fbmc_quality.jao_data.jao_store_cli"></span><dt class="sig sig-object py" id="fbmc_quality.entsoe_data.fetch_entsoe_data.fetch_net_position_from_crossborder_flows">
+<span class="sig-prename descclassname"><span class="pre">fbmc_quality.entsoe_data.fetch_entsoe_data.</span></span><span class="sig-name descname"><span class="pre">fetch_net_position_from_crossborder_flows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bidding_zones</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_non_conforming_hours</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.entsoe_data.fetch_entsoe_data.fetch_net_position_from_crossborder_flows" title="Link to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Computes the net-positions in a period from <cite>start</cite> to <cite>end</cite> from data from ENTSOE Transparency,</dt><dd><p>for the given <cite>bidding_zones</cite></p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start</strong> (<em>date</em><em> | </em><em>None</em><em>, </em><em>optional</em>) – Date to start filter the computation on.</p></li>
+<li><p><strong>end</strong> (<em>date</em><em> | </em><em>None</em><em>, </em><em>optional</em>) – Date to end filter the computation on.</p></li>
+<li><p><strong>bidding_zones</strong> (<a class="reference internal" href="#fbmc_quality.dataframe_schemas.BiddingZones" title="fbmc_quality.dataframe_schemas.BiddingZones"><em>BiddingZones</em></a><em> | </em><em>list</em><em>[</em><a class="reference internal" href="#fbmc_quality.dataframe_schemas.BiddingZones" title="fbmc_quality.dataframe_schemas.BiddingZones"><em>BiddingZones</em></a><em>] </em><em>| </em><em>None</em><em>, </em><em>optional</em>) – Bidding zones to compute the net position for.
+Defaults to None, which will compute for ALL bidding zones.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">DataFrame</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">NetPosition</span></code>]]</p>
+</dd>
+</dl>
+<p>Returns DataFrame[NetPosition]:</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fbmc_quality.entsoe_data.fetch_entsoe_data.fetch_observed_entsoe_data_for_cnec">
+<span class="sig-prename descclassname"><span class="pre">fbmc_quality.entsoe_data.fetch_entsoe_data.</span></span><span class="sig-name descname"><span class="pre">fetch_observed_entsoe_data_for_cnec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">from_area</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_area</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.entsoe_data.fetch_entsoe_data.fetch_observed_entsoe_data_for_cnec" title="Link to this definition">¶</a></dt>
+<dd><p>Calculates the flow on a border CNEC between two areas for a time period</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>from_area</strong> (<a class="reference internal" href="#fbmc_quality.enums.bidding_zones.BiddingZonesEnum" title="fbmc_quality.enums.bidding_zones.BiddingZonesEnum"><em>BiddingZonesEnum</em></a>) – Start biddingzone - flow from this area has a positive sign</p></li>
+<li><p><strong>to_area</strong> (<a class="reference internal" href="#fbmc_quality.enums.bidding_zones.BiddingZonesEnum" title="fbmc_quality.enums.bidding_zones.BiddingZonesEnum"><em>BiddingZonesEnum</em></a>) – End biddingzone - flow to this area has positive sign</p></li>
+<li><p><strong>start_date</strong> (<em>date</em>) – start date to pull data from</p></li>
+<li><p><strong>end_date</strong> (<em>date</em>) – enddate to pull data to</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – Mapping error if <cite>ENTSOE_BIDDING_ZONE_MAP</cite> does not contain the from/to zone.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Frame with  time as index and one column <cite>flow</cite></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fbmc_quality.entsoe_data.fetch_entsoe_data.get_cross_border_flow">
 <span class="sig-prename descclassname"><span class="pre">fbmc_quality.entsoe_data.fetch_entsoe_data.</span></span><span class="sig-name descname"><span class="pre">get_cross_border_flow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_from</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_to</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.entsoe_data.fetch_entsoe_data.get_cross_border_flow" title="Link to this definition">¶</a></dt>
 <dd><p>Gets the cross border flow from in a date-range for an interchange from/to an Area.
 <cite>**NOTE**</cite> the flows are all &gt; 0, meaning you need to retrieve both directions to get expected data</p>
@@ -344,29 +485,6 @@ Must have index cnec_id, and column cnecName</p></li>
 <dd class="field-odd"><p>pd.Series</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="fbmc_quality.entsoe_data.fetch_entsoe_data.get_net_position_from_crossborder_flows">
-<span class="sig-prename descclassname"><span class="pre">fbmc_quality.entsoe_data.fetch_entsoe_data.</span></span><span class="sig-name descname"><span class="pre">get_net_position_from_crossborder_flows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bidding_zones</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_non_conforming_hours</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fbmc_quality.entsoe_data.fetch_entsoe_data.get_net_position_from_crossborder_flows" title="Link to this definition">¶</a></dt>
-<dd><dl class="simple">
-<dt>Computes the net-positions in a period from <cite>start</cite> to <cite>end</cite> from data from ENTSOE Transparency,</dt><dd><p>for the given <cite>bidding_zones</cite></p>
-</dd>
-</dl>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>start</strong> (<em>date</em><em> | </em><em>None</em><em>, </em><em>optional</em>) – Date to start filter the computation on.</p></li>
-<li><p><strong>end</strong> (<em>date</em><em> | </em><em>None</em><em>, </em><em>optional</em>) – Date to end filter the computation on.</p></li>
-<li><p><strong>bidding_zones</strong> (<a class="reference internal" href="#fbmc_quality.dataframe_schemas.BiddingZones" title="fbmc_quality.dataframe_schemas.BiddingZones"><em>BiddingZones</em></a><em> | </em><em>list</em><em>[</em><a class="reference internal" href="#fbmc_quality.dataframe_schemas.BiddingZones" title="fbmc_quality.dataframe_schemas.BiddingZones"><em>BiddingZones</em></a><em>] </em><em>| </em><em>None</em><em>, </em><em>optional</em>) – Bidding zones to compute the net position for.
-Defaults to None, which will compute for ALL bidding zones.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">DataFrame</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">NetPosition</span></code>]]</p>
-</dd>
-</dl>
-<p>Returns DataFrame[NetPosition]:</p>
 </dd></dl>
 
 <dl class="py class enum" id="module-fbmc_quality.enums.bidding_zones">
@@ -1901,7 +2019,7 @@ For a single CNEC</p>
 
 
           </div>
-          
+
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
@@ -1956,18 +2074,18 @@ For a single CNEC</p>
     </div>
     <div class="footer">
       &copy;2023, Robert Solli, Kristian Authen.
-      
+
       |
       Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
-      
+
       |
       <a href="_sources/index.rst.txt"
           rel="nofollow">Page source</a>
     </div>
 
-    
 
-    
+
+
   </body>
 </html>

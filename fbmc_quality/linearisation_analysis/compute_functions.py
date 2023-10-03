@@ -1,6 +1,7 @@
 import pandas as pd
-from fbmc_quality.dataframe_schemas import CnecData, JaoData, NetPosition
 from pandera.typing import DataFrame
+
+from fbmc_quality.dataframe_schemas import CnecData, JaoData, NetPosition
 
 
 def compute_linearised_flow(
@@ -48,8 +49,8 @@ def compute_weghted_loading(
 
     vulnerability is the fraction of linearisation-error to the margin in MW in the target situation:
         `v = linearisation-error/(f_max - target-flow)`
-    
-    basecase relative margin is the 
+
+    basecase relative margin is the
 
     Args:
         cnec_data (DataFrame[CnecData]): zonal ptdfs and y axis offset

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import typer
 
-from fbmc_quality.entsoe_data.fetch_entsoe_data import get_net_position_from_crossborder_flows
+from fbmc_quality.entsoe_data.fetch_entsoe_data import fetch_net_position_from_crossborder_flows
 
 app = typer.Typer()
 
@@ -21,7 +21,7 @@ def main(
     current = from_date
 
     while current < to_date:
-        _ = get_net_position_from_crossborder_flows(current, current + timedelta(days=1))
+        _ = fetch_net_position_from_crossborder_flows(current, current + timedelta(days=1))
         typer.echo(f"Stored data for {current}")
         current += timedelta(days=1)
 

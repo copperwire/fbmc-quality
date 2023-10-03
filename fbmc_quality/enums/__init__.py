@@ -1,0 +1,1 @@
+from fbmc_quality.enums.bidding_zones import BiddingZonesEnum

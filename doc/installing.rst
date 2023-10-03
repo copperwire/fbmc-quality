@@ -10,4 +10,4 @@ You can use `pip` to install fbmc-linearisation-analysis:
 
 * For installing for all users, you need to run::
 
-    pip install joblib fbmc-linearisation-analysis
+    pip install fbmc-linearisation-analysis

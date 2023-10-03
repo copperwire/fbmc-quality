@@ -3,29 +3,27 @@ from datetime import date, timedelta
 from turtle import title
 from typing import Callable
 
+import pandas as pd
+import plotly.express as px
+import plotly.io as pio
+import streamlit as st
+import streamlit_searchbox as st_searchbox
 from dotenv import load_dotenv
+from simstring.database.dict import DictDatabase
+from simstring.feature_extractor.character_ngram import CharacterNgramFeatureExtractor
+from simstring.measure.cosine import CosineMeasure
+from simstring.searcher import Searcher
+
 from fbmc_quality.dataframe_schemas.schemas import JaoData
 from fbmc_quality.linearisation_analysis import (
+    JaoDataAndNPS,
+    compute_cnec_vulnerability_to_err,
     compute_linearisation_error,
     compute_linearised_flow,
-    compute_cnec_vulnerability_to_err,
-)
-from fbmc_quality.linearisation_analysis import (
     load_data_for_corridor_cnec,
     load_data_for_internal_cnec,
     load_jao_data_basecase_nps_and_observed_nps,
 )
-from fbmc_quality.linearisation_analysis import JaoDataAndNPS
-import pandas as pd
-import streamlit as st
-import streamlit_searchbox as st_searchbox
-from simstring.feature_extractor.character_ngram import CharacterNgramFeatureExtractor
-from simstring.measure.cosine import CosineMeasure
-from simstring.database.dict import DictDatabase
-from simstring.searcher import Searcher
-
-import plotly.express as px
-import plotly.io as pio
 
 
 @st.cache_data

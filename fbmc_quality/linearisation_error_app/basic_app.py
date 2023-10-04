@@ -81,7 +81,7 @@ class NameSearcher:
                 self.seen_names.add(name)
 
     def __call__(self, name: str):
-        return self.searcher.search(name, 0.4)
+        return self.searcher.search(name, 0.2)
 
 
 def app(internal_cnec_func: Callable[[date, date, str], pd.DataFrame | None] | None = None):

@@ -4,6 +4,12 @@ Running the bundled example app
 Running the example app
 ------------------------
 
+.. note::
+
+    Installing with optional dependencies for hosting the basic app is done by
+
+        pip install fbmc-linearisation-analysis[app-template]
+
 This package comes bundled with an example app. It just needs a function to read data from internal CNECs,
 but this defaults to `None` and can be ignored.
 

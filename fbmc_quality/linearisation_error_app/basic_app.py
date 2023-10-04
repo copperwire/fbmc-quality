@@ -1,6 +1,5 @@
 import re
 from datetime import date, timedelta
-from turtle import title
 from typing import Callable
 
 import pandas as pd
@@ -81,7 +80,7 @@ class NameSearcher:
                 self.seen_names.add(name)
 
     def __call__(self, name: str):
-        return self.searcher.search(name, 0.2)
+        return self.searcher.search(name, 0.3)
 
 
 def app(internal_cnec_func: Callable[[date, date, str], pd.DataFrame | None] | None = None):

@@ -40,7 +40,7 @@ def compute_linearisation_error(
     return rel_error
 
 
-def compute_weghted_loading(
+def compute_cnec_vulnerability_to_err(
     cnec_data: DataFrame[CnecData],
     target_net_positions: DataFrame[NetPosition],
     target_flow: "pd.Series[pd.Float64Dtype]",

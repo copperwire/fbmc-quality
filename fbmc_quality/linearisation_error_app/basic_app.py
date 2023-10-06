@@ -23,6 +23,7 @@ from fbmc_quality.linearisation_analysis import (
     load_data_for_internal_cnec,
     load_jao_data_basecase_nps_and_observed_nps,
 )
+from fbmc_quality.linearisation_analysis.process_data import get_from_to_bz_from_name
 
 
 @st.cache_data
@@ -47,12 +48,12 @@ class DataContainer:
     def get_cnec_data(_self, selected_name: str, start, end):
         data_load_state = st.text("Loading CNEC data...")
 
-        result = re.search(r"\d{5}_\d{2}", selected_name)
-        if result is not None:
+        from_bz, to_bz = get_from_to_bz_from_name(selected_name)
+        if from_bz is None or to_bz is not None:
             if _self.internal_cnec_func is not None:
                 cnec_data = load_data_for_internal_cnec(selected_name, _self.internal_cnec_func, _self.data)
             else:
-                st.error("No function for reading internal CNECs supplied")
+                st.error(f"No function for reading internal CNECs supplied, and no BZ found for {selected_name}")
                 cnec_data = None
         else:
             cnec_data = load_data_for_corridor_cnec(selected_name, _self.data)
@@ -178,3 +179,7 @@ def app(internal_cnec_func: Callable[[date, date, str], pd.DataFrame | None] | N
             title=f"Vulnerability and Reliability against Fmax ~ {fmax_mean}",
         )
         st.plotly_chart(vuln_lineplot)
+
+
+if __name__ == "__main__":
+    app()

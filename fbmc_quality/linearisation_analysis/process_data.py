@@ -1,6 +1,7 @@
 import re
 from datetime import date
 from typing import Callable
+import Levenshtein
 
 import numpy as np
 import pandas as pd
@@ -153,14 +154,37 @@ def load_data_for_corridor_cnec(cnecName: str, jaodata_and_net_positions: JaoDat
     return load_data_for_internal_cnec(cnecName, _get_entsoe_data_for_cnec, jaodata_and_net_positions)
 
 
-def get_from_to_bz_from_name(cnecName: str):
+def get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZonesEnum] | tuple[None, None]:
+    bz1, bz2 = regex_get_from_to_bz_from_name(cnecName)
+    if bz1 is None or bz2 is None:
+        return substring_get_from_to_bz_from_name(cnecName)
+    else:
+        return bz1, bz2
+
+def substring_get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZonesEnum] | tuple[None, None]:
+    for bz_from in BiddingZonesEnum:
+        for bz_to in BiddingZonesEnum:
+            if bz_from == bz_to:
+                continue
+            
+            if bz_from.value in cnecName and bz_to.value in cnecName: 
+                dist1 = Levenshtein.distance(f"{bz_from.value} {bz_to.value}", cnecName)
+                dist2 = Levenshtein.distance(f"{bz_from.value} {bz_to.value}", cnecName)
+                if dist1 < dist2:
+                    return bz_from, bz_to
+                else:
+                    return bz_from, bz_to
+    return (None, None)
+
+
+
+def regex_get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZonesEnum] | tuple[None, None]:
     for bz_from in BiddingZonesEnum:
         for bz_to in BiddingZonesEnum:
             if bz_from == bz_to:
                 continue
 
-            match = re.search(rf"{bz_from.value}.+{bz_to}", cnecName)
+            match = re.search(rf"{bz_from.value}.+{bz_to.value}", cnecName)
             if match is not None:
                 return bz_from, bz_to
-
     return (None, None)

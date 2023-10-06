@@ -3,3 +3,4 @@ sphinx==7.2.6
 sphinx-autodoc-typehints==1.24.0
 enum-tools==0.11.0
 sphinx-toolbox==3.5.0
+psutil==5.9.5

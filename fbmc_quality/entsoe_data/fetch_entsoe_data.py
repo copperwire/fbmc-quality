@@ -199,6 +199,7 @@ def fetch_net_position_from_crossborder_flows(
 
     start_pd = convert_date_to_utc_pandas(start)
     end_pd = convert_date_to_utc_pandas(end)
+    logger = logging.getLogger()
 
     retval = _get_net_position_from_crossborder_flows(start_pd, end_pd)
     retval = pd.concat(retval, axis=1)

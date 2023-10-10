@@ -174,6 +174,8 @@ def fetch_jao_dataframe_timeseries(
         DataFrame[JaoData] | None: pandas Dataframe with JAO date,
             returns `None` if no data is found in API or cache
     """
+    logger = logging.getLogger()
+
     if write_path is None:
         default_folder_path = Path.home() / Path(".flowbased_data/jao")
         create_default_folder(default_folder_path)
@@ -188,6 +190,7 @@ def fetch_jao_dataframe_timeseries(
         dt_to_time = datetime(to_time.year, to_time.month, to_time.day)
 
     if new_start != dt_to_time:
+        logger.info(f"JAO: Hit cache - but need extra data from {new_start}-{to_time}")
         try:
             all_results = asyncio.run(_fetch_jao_dataframe_timeseries(new_start, dt_to_time, write_path))
         except RuntimeError:
@@ -196,6 +199,7 @@ def fetch_jao_dataframe_timeseries(
                 _fetch_jao_dataframe_timeseries(new_start, dt_to_time, write_path), loop
             ).result()
     elif cached_results is not None:
+        logger.info(f"JAO: Full Cache Hit")
         return cached_results
 
     if cached_results is not None and all_results is not None:

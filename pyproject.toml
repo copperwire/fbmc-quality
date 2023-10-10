@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fbmc-linearisation-analysis"
-version = "0.1.9"
+version = "0.1.10"
 description = ""
 authors = ["Robert Solli <robert@xal.no>", "Kristan Authen <kristian.authen@statnett.no>"]
 readme = "README.md"

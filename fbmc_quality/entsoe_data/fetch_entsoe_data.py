@@ -124,8 +124,8 @@ def convert_date_to_utc_pandas(date_obj: date | datetime) -> pd.Timestamp:
         return date_obj
     if hasattr(date_obj, "tzinfo") and date_obj.tzinfo is not None:
         return pd.Timestamp(date_obj)
-
-    return pd.Timestamp(date_obj, tz="UTC") - pd.Timedelta(hours=get_utc_delta(date_obj))
+        
+    return pd.Timestamp(date_obj, tz="Europe/Oslo").tz_convert('UTC')
 
 
 def get_entsoe_client(session: Session | None = None) -> EntsoePandasClient:

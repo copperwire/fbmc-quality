@@ -5,7 +5,7 @@ Command Line Interface
 
 Downloading Data
 ----------------
-Pulling data from JAO and ENTSOE-Transparency can be quite slow. The data is cached locally in the :code:`~\\.linearisation_error` directory.
+Pulling data from JAO and ENTSOE-Transparency can be quite slow. The data is cached locally in the :code:`~\\.linearisation_data` directory.
 
 * You can pre download the data to disk using the CLIs eg,::
 

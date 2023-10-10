@@ -193,6 +193,7 @@ def fetch_net_position_from_crossborder_flows(
 
     start_pd = convert_date_to_utc_pandas(start)
     end_pd = convert_date_to_utc_pandas(end)
+    logger = logging.getLogger()
 
     default_folder_path = Path.home() / Path(".flowbased_data/entsoe_transparency")
     create_default_folder(default_folder_path)
@@ -200,6 +201,7 @@ def fetch_net_position_from_crossborder_flows(
     df_list, start_pd = get_np_data_from_cache(start_pd, end_pd, write_path)
 
     if start_pd != end_pd:
+        logger.info(f"ENTSOE: Hit cache - but need extra data from {start_pd}-{end_pd}")
         retval = _get_net_position_from_crossborder_flows(start_pd, end_pd)
         retval = pd.concat(retval, axis=1)
         cache_np_data(retval, write_path)
@@ -208,6 +210,7 @@ def fetch_net_position_from_crossborder_flows(
             retval = pd.concat([df_list, retval], axis=1)
 
     elif df_list is not None:
+        logger.info(f"ENTSOE: Full Cache Hit")
         retval = df_list
     else:
         return None

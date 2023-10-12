@@ -13,8 +13,9 @@ from requests import Session
 
 from fbmc_quality.dataframe_schemas.schemas import NetPosition
 from fbmc_quality.enums.bidding_zones import BiddingZonesEnum
-from fbmc_quality.jao_data.analyse_jao_data import get_utc_delta, is_elements_equal_to_target
+from fbmc_quality.jao_data.analyse_jao_data import is_elements_equal_to_target
 from fbmc_quality.jao_data.fetch_jao_data import create_default_folder
+from fbmc_quality.jao_data.get_utc_delta import get_utc_delta
 
 ENSTOE_BIDDING_ZONE_MAP: dict[BiddingZonesEnum, Area] = {
     BiddingZonesEnum.NO1: Area.NO_1,

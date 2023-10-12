@@ -6,16 +6,18 @@ import warnings
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from tempfile import gettempdir
-from typing import TypeVar
+from typing import Iterable, TypeVar
 
 import aiohttp
+import duckdb
 import pandas as pd
-import psutil
 from click import FileError
-from joblib import Parallel, delayed
 from pandera.typing import DataFrame
+import pytz
+from sqlalchemy import Engine, create_engine
 
 from fbmc_quality.dataframe_schemas.schemas import JaoData
+from fbmc_quality.jao_data.get_utc_delta import get_utc_delta
 
 warnings.filterwarnings(
     "ignore",
@@ -49,7 +51,7 @@ async def get_ptdfs(date: timedata, session: aiohttp.ClientSession) -> dict[str,
 
 
 async def _fetch_jao_dataframe_from_datetime(
-    date: timedata, write_path: None | Path = None, session: aiohttp.ClientSession | None = None
+    date: timedata, write_path: None | Path = None, session: aiohttp.ClientSession | None = None, engine: Engine | None= None
 ) -> DataFrame[JaoData]:
     """Fetches a dataframe representation of JAO data"""
 
@@ -60,12 +62,10 @@ async def _fetch_jao_dataframe_from_datetime(
         data_from_jao = await get_ptdfs(date, session)
 
     file_path = (
-        write_path / f'jao_{date.strftime("%Y%m%dT%H")}.arrow'
+        write_path / f'linearisation_analysis.duckdb'
         if write_path is not None
-        else Path(gettempdir()) / f'jao_{date.strftime("%Y%m%dT%H")}.arrow'
+        else Path(gettempdir()) / f'linearisation_analysis.duckdb'
     )
-    if file_path.exists():
-        return pd.read_feather(file_path)  # type: ignore
 
     df = pd.DataFrame(data_from_jao["data"])  # type: ignore
     df = df.loc[df[JaoData.cnecName].notnull(), :]
@@ -80,33 +80,31 @@ async def _fetch_jao_dataframe_from_datetime(
     df.columns = col
     df = df.set_index([JaoData.cnec_id, JaoData.time])
     df_validated: DataFrame[JaoData] = JaoData.validate(df)  # type: ignore
+    
+    if engine is None:
+        connection = duckdb.connect(str(file_path), read_only=False)
+        df_validated.to_sql("jao", connection, if_exists='append', index=True, index_label=['cnec_id', 'time'])
+    else:
+        with engine.connect() as connection:
+            df_validated.to_sql("jao", connection, if_exists='append', index=True, index_label=['cnec_id', 'time'])
+            connection.commit()
 
-    df_validated.to_feather(file_path)
     return df_validated
 
-
 async def _fetch_jao_dataframe_timeseries(
-    from_time: timedata, to_time: timedata, write_path: Path | None = None
+    time_points: list[datetime], write_path: Path | None = None
 ) -> DataFrame[JaoData] | None:
-    logging.getLogger().info(f"Fetching JAO data from {from_time} to {to_time}")
-    if isinstance(from_time, date):
-        dt_from_time = datetime(from_time.year, from_time.month, from_time.day)
-    else:
-        dt_from_time = from_time
+    logging.getLogger().info(f"Fetching JAO data from {len(time_points)} hours")
+    if write_path is None:
+        write_path = Path(gettempdir())
 
-    if isinstance(to_time, date):
-        dt_to_time = datetime(to_time.year, to_time.month, to_time.day)
-    else:
-        dt_to_time = to_time
-
-    current_time = dt_from_time
+    engine = create_engine("duckdb:///" + str(write_path / 'linearisation_analysis.duckdb'))
     all_results: list[DataFrame[JaoData]] = []
 
     async with aiohttp.ClientSession() as session:
-        while current_time < dt_to_time:
-            results = await _fetch_jao_dataframe_from_datetime(current_time, write_path, session)
+        for time_point in time_points:
+            results = await _fetch_jao_dataframe_from_datetime(time_point, write_path, session, engine)
             all_results.append(results)
-            current_time += timedelta(hours=1)
 
     if all_results:
         return_frame = pd.concat(all_results)
@@ -124,7 +122,7 @@ def create_default_folder(default_folder_path: Path):
 
 def try_jao_cache_before_async(
     from_time: timedata, to_time: timedata, write_path: Path
-) -> tuple[DataFrame[JaoData] | None, datetime]:
+) -> tuple[DataFrame[JaoData] | None, list[datetime]]:
     if isinstance(from_time, date):
         dt_from_time = datetime(from_time.year, from_time.month, from_time.day)
     else:
@@ -134,25 +132,27 @@ def try_jao_cache_before_async(
         dt_to_time = datetime(to_time.year, to_time.month, to_time.day)
     else:
         dt_to_time = to_time
+    
+    loop_time = dt_from_time
+    time_range: list[datetime]  = []
+    while loop_time < dt_to_time:
+        time_range.append(loop_time.replace(tzinfo=pytz.UTC))
+        loop_time += timedelta(hours=1)
 
-    current_time: datetime = dt_from_time
-    all_paths = []
+    connection = duckdb.connect(str(write_path / 'linearisation_analysis.duckdb'), read_only=False)
+    try:
+        cached_data = connection.sql(f"SELECT * FROM JAO WHERE time BETWEEN '{from_time + timedelta(hours=get_utc_delta(from_time))}' AND '{to_time+ timedelta(hours=get_utc_delta(from_time))}'").df()
+    except duckdb.CatalogException:
+        return None, time_range
+    connection.close()
 
-    while current_time < dt_to_time:
-        file_path = write_path / f'jao_{current_time.strftime("%Y%m%dT%H")}.arrow'
-        if file_path.exists():
-            all_paths.append(file_path)
-        else:
-            break
-
-        current_time += timedelta(hours=1)
-
-    if all_paths:
-        cores = psutil.cpu_count()
-        context = Parallel(cores, backend="loky")
-        return pd.concat(context(delayed(pd.read_feather)(path) for path in all_paths)), current_time  # type: ignore
+    if cached_data.empty:
+        return None, time_range
     else:
-        return None, current_time  # type: ignore
+        cached_data['time'] = cached_data['time'].dt.tz_convert('UTC')
+        unique_hours: Iterable[datetime] = cached_data['time'].unique().to_pydatetime()
+        subset_time = [loop_time for loop_time in time_range if loop_time not in unique_hours ]
+        return cached_data.set_index(['cnec_id', 'time']), subset_time
 
 
 def fetch_jao_dataframe_timeseries(
@@ -177,7 +177,7 @@ def fetch_jao_dataframe_timeseries(
     logger = logging.getLogger()
 
     if write_path is None:
-        default_folder_path = Path.home() / Path(".flowbased_data/jao")
+        default_folder_path = Path.home() / Path(".flowbased_data")
         create_default_folder(default_folder_path)
         write_path = default_folder_path
     elif not write_path.exists():
@@ -186,17 +186,14 @@ def fetch_jao_dataframe_timeseries(
     all_results = None
     cached_results, new_start = try_jao_cache_before_async(from_time, to_time, write_path)
 
-    if isinstance(to_time, date):
-        dt_to_time = datetime(to_time.year, to_time.month, to_time.day)
-
-    if new_start != dt_to_time:
-        logger.info(f"JAO: Hit cache - but need extra data from {new_start}-{to_time}")
+    if len(new_start) > 0:
+        logger.info(f"JAO: Hit cache - but need extra data from {len(new_start)}")
         try:
-            all_results = asyncio.run(_fetch_jao_dataframe_timeseries(new_start, dt_to_time, write_path))
+            all_results = asyncio.run(_fetch_jao_dataframe_timeseries(new_start, write_path))
         except RuntimeError:
             loop = asyncio.get_event_loop()
             all_results = asyncio.run_coroutine_threadsafe(
-                _fetch_jao_dataframe_timeseries(new_start, dt_to_time, write_path), loop
+                _fetch_jao_dataframe_timeseries(new_start, write_path), loop
             ).result()
     elif cached_results is not None:
         logger.info(f"JAO: Full Cache Hit")

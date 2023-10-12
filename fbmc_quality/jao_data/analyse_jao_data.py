@@ -1,12 +1,10 @@
 import logging
 from contextlib import suppress
-from datetime import date, datetime
-from typing import Literal
+from datetime import date
 from warnings import warn
 
 import pandas as pd
 import polars as pl
-import pytz
 from pandera.typing import DataFrame
 
 from fbmc_quality.dataframe_schemas.schemas import JaoData, NetPosition
@@ -139,17 +137,6 @@ BIDDING_ZONE_CNEC_MAP = {
         "Border_CNEC_SE3-SE3_SWL",
     ],
 }
-
-
-def get_utc_delta(input_date: date | datetime) -> Literal[1, 2]:
-    ref_datetime = datetime(input_date.year, input_date.month, input_date.day)
-    delta = (
-        pytz.timezone("Europe/Oslo").fromutc(ref_datetime) - ref_datetime.astimezone(pytz.timezone("Europe/Oslo"))
-    ).total_seconds()
-    hours = int(delta / (60 * 60))
-    if hours not in (1, 2):
-        raise ValueError(f"Unexpected delta {hours} between Oslo and UTC at {input_date} ")
-    return hours
 
 
 def get_cnec_id_from_name(

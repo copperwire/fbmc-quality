@@ -14,9 +14,10 @@ import pandas as pd
 from click import FileError
 from pandera.typing import DataFrame
 import pytz
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, text
+from sqlalchemy.orm.session import Session
 
-from fbmc_quality.dataframe_schemas.schemas import JaoData
+from fbmc_quality.dataframe_schemas.schemas import Base, JaoData, JaoModel
 from fbmc_quality.jao_data.get_utc_delta import get_utc_delta
 
 warnings.filterwarnings(
@@ -51,7 +52,7 @@ async def get_ptdfs(date: timedata, session: aiohttp.ClientSession) -> dict[str,
 
 
 async def _fetch_jao_dataframe_from_datetime(
-    date: timedata, write_path: None | Path = None, session: aiohttp.ClientSession | None = None, engine: Engine | None= None
+    date: timedata, engine: Engine, session: aiohttp.ClientSession | None = None
 ) -> DataFrame[JaoData]:
     """Fetches a dataframe representation of JAO data"""
 
@@ -61,11 +62,6 @@ async def _fetch_jao_dataframe_from_datetime(
     else:
         data_from_jao = await get_ptdfs(date, session)
 
-    file_path = (
-        write_path / f'linearisation_analysis.duckdb'
-        if write_path is not None
-        else Path(gettempdir()) / f'linearisation_analysis.duckdb'
-    )
 
     df = pd.DataFrame(data_from_jao["data"])  # type: ignore
     df = df.loc[df[JaoData.cnecName].notnull(), :]
@@ -78,17 +74,13 @@ async def _fetch_jao_dataframe_from_datetime(
     for i, col_name in enumerate(col):
         col[i] = col_name.replace("ptdf_", "")
     df.columns = col
-    df = df.set_index([JaoData.cnec_id, JaoData.time])
-    df_validated: DataFrame[JaoData] = JaoData.validate(df)  # type: ignore
     
-    if engine is None:
-        connection = duckdb.connect(str(file_path), read_only=False)
-        df_validated.to_sql("jao", connection, if_exists='append', index=True, index_label=['cnec_id', 'time'])
-    else:
-        with engine.connect() as connection:
-            df_validated.to_sql("jao", connection, if_exists='append', index=True, index_label=['cnec_id', 'time'])
-            connection.commit()
-
+    df['ROW_KEY'] = df[JaoData.cnec_id] + "_" + df[JaoData.time].astype(str)
+    df = df.drop_duplicates(['ROW_KEY'])
+    df.to_sql('JAO', engine, if_exists='append', index=False)
+    
+    df = df.set_index([JaoData.cnec_id, JaoData.time]).drop('ROW_KEY', axis=1)
+    df_validated: DataFrame[JaoData] = JaoData.validate(df)  # type: ignore
     return df_validated
 
 async def _fetch_jao_dataframe_timeseries(
@@ -98,12 +90,12 @@ async def _fetch_jao_dataframe_timeseries(
     if write_path is None:
         write_path = Path(gettempdir())
 
-    engine = create_engine("duckdb:///" + str(write_path / 'linearisation_analysis.duckdb'))
     all_results: list[DataFrame[JaoData]] = []
+    engine = create_engine("duckdb:///" + str(write_path / 'linearisation_analysis.duckdb'))
 
     async with aiohttp.ClientSession() as session:
         for time_point in time_points:
-            results = await _fetch_jao_dataframe_from_datetime(time_point, write_path, session, engine)
+            results = await _fetch_jao_dataframe_from_datetime(time_point, engine, session)
             all_results.append(results)
 
     if all_results:
@@ -135,13 +127,16 @@ def try_jao_cache_before_async(
     
     loop_time = dt_from_time
     time_range: list[datetime]  = []
-    while loop_time < dt_to_time:
+    while loop_time < (dt_to_time - timedelta(hours=1)) :
         time_range.append(loop_time.replace(tzinfo=pytz.UTC))
         loop_time += timedelta(hours=1)
+    
 
     connection = duckdb.connect(str(write_path / 'linearisation_analysis.duckdb'), read_only=False)
     try:
-        cached_data = connection.sql(f"SELECT * FROM JAO WHERE time BETWEEN '{from_time + timedelta(hours=get_utc_delta(from_time))}' AND '{to_time+ timedelta(hours=get_utc_delta(from_time))}'").df()
+        cached_data = connection.sql(
+            f"SELECT * FROM JAO WHERE time BETWEEN '{from_time - timedelta(hours=get_utc_delta(from_time))}' AND '{to_time+ timedelta(hours=get_utc_delta(from_time))}'"
+            ).df().drop('ROW_KEY', axis=1)
     except duckdb.CatalogException:
         return None, time_range
     connection.close()
@@ -149,14 +144,14 @@ def try_jao_cache_before_async(
     if cached_data.empty:
         return None, time_range
     else:
-        cached_data['time'] = cached_data['time'].dt.tz_convert('UTC')
+        cached_data['time'] = cached_data['time'].dt.tz_localize('Europe/Oslo').dt.tz_convert('UTC')
         unique_hours: Iterable[datetime] = cached_data['time'].unique().to_pydatetime()
         subset_time = [loop_time for loop_time in time_range if loop_time not in unique_hours ]
         return cached_data.set_index(['cnec_id', 'time']), subset_time
 
 
 def fetch_jao_dataframe_timeseries(
-    from_time: timedata, to_time: timedata, write_path: Path | None = None
+    from_time: timedata, to_time: timedata
 ) -> DataFrame[JaoData] | None:
     """Reads JAO data from the API and returns the corresponding frame.
     Pulls data from cache in the `write_path`
@@ -176,12 +171,12 @@ def fetch_jao_dataframe_timeseries(
     """
     logger = logging.getLogger()
 
-    if write_path is None:
-        default_folder_path = Path.home() / Path(".flowbased_data")
-        create_default_folder(default_folder_path)
-        write_path = default_folder_path
-    elif not write_path.exists():
-        raise FileError(f"No directory at {write_path}")
+    default_folder_path = Path.home() / Path(".flowbased_data")
+    create_default_folder(default_folder_path)
+    write_path = default_folder_path
+
+    engine = create_engine("duckdb:///" + str(write_path / 'linearisation_analysis.duckdb'))
+    Base.metadata.create_all(engine)
 
     all_results = None
     cached_results, new_start = try_jao_cache_before_async(from_time, to_time, write_path)
@@ -202,6 +197,8 @@ def fetch_jao_dataframe_timeseries(
     if cached_results is not None and all_results is not None:
         return_frame = pd.concat([cached_results, all_results]).sort_index()
         return return_frame  # type: ignore
+    elif all_results is not None:
+        return all_results.sort_index() # type: ignore
 
 
 """

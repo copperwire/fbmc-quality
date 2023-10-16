@@ -5,6 +5,96 @@ import pandera as pa
 import pydantic
 from pandera.typing import Index, Series
 
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import mapped_column
+
+Base = declarative_base()
+
+class JaoModel(Base):  # type: ignore
+    __tablename__ = "JAO"
+
+    #id = Column(Integer, Sequence("fakemodel_id_sequence"), primary_key=True)
+    #name = Column(String)
+    cnec_id = Column(String)  #: Index value
+    time = Column(DateTime) #: Index value
+    ROW_KEY = Column(String, primary_key=True)
+    id = Column(Integer) #: JAO field value 
+    dateTimeUtc= Column(DateTime)  #: JAO field value
+    tso= Column(String)  #: JAO field value
+    cnecName= Column(String)  #: JAO field value
+    cnecType= Column(String)  #: JAO field value
+    cneName= Column(String)    #: JAO field value
+    cneType= Column(String)    #: JAO field value
+    cneStatus= Column(String)    #: JAO field value
+    cneEic= Column(String)    #: JAO field value
+    direction= Column(String)    #: JAO field value
+    hubFrom= Column(String)    #: JAO field value
+    hubTo= Column(String)    #: JAO field value
+    substationFrom= Column(String)    #: JAO field value
+    substationTo= Column(String)    #: JAO field value
+    elementType= Column(String)    #: JAO field value
+    fmaxType= Column(String)    #: JAO field value
+    contTso= Column(String)    #: JAO field value
+    contName= Column(String)    #: JAO field value
+    contStatus= Column(String)    #: JAO field value
+    contSubstationFrom= Column(String)    #: JAO field value
+    contSubstationTo= Column(String)    #: JAO field value
+    imaxMethod= Column(String)  #: JAO field value
+    contingencies= Column(String)  #: JAO field value
+    presolved= Column(Boolean)  #: JAO field value
+    significant= Column(Boolean)  #: JAO field value
+    ram= Column(Float)  #: JAO field value
+    minFlow= Column(Float)  #: JAO field value
+    maxFlow= Column(Float)  #: JAO field value
+    u= Column(Float)  #: JAO field value
+    imax= Column(Float)  #: JAO field value
+    fmax= Column(Float)  #: JAO field value
+    frm= Column(Float)  #: JAO field value
+    frefInit= Column(Float)  #: JAO field value
+    fnrao= Column(Float)  #: JAO field value
+    fref= Column(Float)  #: JAO field value
+    fcore= Column(Float)  #: JAO field value
+    fall= Column(Float)  #: JAO field value
+    fuaf= Column(Float)  #: JAO field value
+    amr= Column(Float)  #: JAO field value
+    aac= Column(Float)  #: JAO field value
+    ltaMargin= Column(Float) #: JAO field value
+    cva= Column(Float)  #: JAO field value
+    iva= Column(Float)  #: JAO field value
+    ftotalLtn= Column(Float) #: JAO field value
+    fltn= Column(Float)  #: JAO field value
+    DK1= Column(Float) #: value of bidding zone
+    DK1_CO= Column(Float)  #: value of bidding zone
+    DK1_DE= Column(Float)  #: value of bidding zone
+    DK1_KS= Column(Float)  #: value of bidding zone
+    DK1_SK= Column(Float)  #: value of bidding zone
+    DK1_ST= Column(Float)  #: value of bidding zone
+    DK2= Column(Float)  #: value of bidding zone
+    DK2_KO= Column(Float)  #: value of bidding zone
+    DK2_ST= Column(Float)  #: value of bidding zone
+    FI= Column(Float)  #: value of bidding zone
+    FI_EL= Column(Float)  #: value of bidding zone
+    FI_FS= Column(Float)  #: value of bidding zone
+    NO1= Column(Float)  #: value of bidding zone
+    NO2= Column(Float)  #: value of bidding zone
+    NO2_ND= Column(Float)  #: value of bidding zone
+    NO2_SK= Column(Float)  #: value of bidding zone
+    NO2_NK= Column(Float)  #: value of bidding zone
+    NO3= Column(Float)  #: value of bidding zone
+    NO4= Column(Float)  #: value of bidding zone
+    NO5= Column(Float)  #: value of bidding zone
+    SE1= Column(Float)  #: value of bidding zone
+    SE2= Column(Float)  #: value of bidding zone
+    SE3= Column(Float)  #: value of bidding zone
+    SE3_FS= Column(Float)  #: value of bidding zone
+    SE3_KS= Column(Float)  #: value of bidding zone
+    SE3_SWL= Column(Float)  #: value of bidding zone
+    SE4= Column(Float)  #: value of bidding zone
+    SE4_BC= Column(Float)  #: value of bidding zone
+    SE4_NB= Column(Float)  #: value of bidding zone
+    SE4_SP= Column(Float)  #: value of bidding zone
+    SE4_SWL= Column(Float)  #: value of bidding zone
 
 class Contingency(pydantic.BaseModel):
     number: int

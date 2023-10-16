@@ -1,15 +1,19 @@
+from contextlib import suppress
 import logging
 import os
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Generator
+from typing import Generator, Iterable
+import duckdb
 
 import pandas as pd
 import psutil
 from entsoe import Area, EntsoePandasClient
 from joblib import Parallel, delayed
 from pandera.typing import DataFrame
+import pytz
 from requests import Session
+from sqlalchemy import create_engine
 
 from fbmc_quality.dataframe_schemas.schemas import NetPosition
 from fbmc_quality.enums.bidding_zones import BiddingZonesEnum
@@ -196,25 +200,9 @@ def fetch_net_position_from_crossborder_flows(
     end_pd = convert_date_to_utc_pandas(end)
     logger = logging.getLogger()
 
-    default_folder_path = Path.home() / Path(".flowbased_data/entsoe_transparency")
-    create_default_folder(default_folder_path)
-    write_path = default_folder_path
-    df_list, start_pd = get_np_data_from_cache(start_pd, end_pd, write_path)
-
-    if start_pd != end_pd:
-        logger.info(f"ENTSOE: Hit cache - but need extra data from {start_pd}-{end_pd}")
-        retval = _get_net_position_from_crossborder_flows(start_pd, end_pd)
-        retval = pd.concat(retval, axis=1)
-        cache_np_data(retval, write_path)
-
-        if df_list is not None:
-            retval = pd.concat([df_list, retval], axis=1)
-
-    elif df_list is not None:
-        logger.info(f"ENTSOE: Full Cache Hit")
-        retval = df_list
-    else:
-        return None
+    logger.info(f"ENTSOE: Hit cache - but need extra data from {start_pd}-{end_pd}")
+    retval = _get_net_position_from_crossborder_flows(start_pd, end_pd)
+    retval = pd.concat(retval, axis=1)
 
     if check_for_zero_zum:
         filter_list = is_elements_equal_to_target(retval.sum(axis=1), threshold=1)
@@ -274,14 +262,51 @@ def _get_net_position_from_crossborder_flows(
 
 
 def _get_cross_border_flow(start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area) -> pd.Series:
-    client = get_entsoe_client()
 
+    default_folder_path = Path.home() / Path(".flowbased_data")
+    db_path = default_folder_path / 'linearisation_analysis.duckdb'
+
+    connection = duckdb.connect(str(db_path), read_only=False)
+    time_range: list[datetime]  = []
+    loop_time = start
+    while loop_time < (end - timedelta(hours=1)) :
+        time_range.append(loop_time.replace(tzinfo=pytz.UTC))
+        loop_time += timedelta(hours=1)
+
+    cached_data = None
+    with suppress(duckdb.CatalogException):
+        cached_data = connection.sql(
+            (
+                "SELECT * FROM ENTSOE WHERE time BETWEEN"
+                f"{start - timedelta(hours=get_utc_delta(start))}' AND '{start + timedelta(hours=get_utc_delta(start))}'"
+                f"AND AREA_FROM={area_from.value} AND AREA_TO = {area_to.value}"
+             )
+            ).df()
+    connection.close()
+
+    if cached_data is None:
+        data = _get_cross_border_flow_from_api(start, end, area_from, area_to)
+        cache_flow_data(data, area_from, area_to)
+    else:
+        engine = create_engine("duckdb:///" + str(db_path))
+        cached_data['time'] = cached_data['time'].dt.tz_convert('UTC')
+        unique_hours: Iterable[datetime] = cached_data['time'].unique().to_pydatetime()
+        subset_time = [loop_time for loop_time in time_range if loop_time not in unique_hours ]
+    
+def cache_flow_data(data: pd.Series, area_from: Area, area_to: Area):
+    ...
+
+
+
+def _get_cross_border_flow_from_api(start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area) -> pd.Series:
+    client = get_entsoe_client()
     crossborder_flow = client.query_crossborder_flows(
         country_code_from=area_from,
         country_code_to=area_to,
         start=start,
         end=end,
     )
+
     return crossborder_flow
 
 

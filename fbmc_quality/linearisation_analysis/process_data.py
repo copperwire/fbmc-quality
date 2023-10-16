@@ -1,8 +1,8 @@
 import re
 from datetime import date
 from typing import Callable
-import Levenshtein
 
+import Levenshtein
 import numpy as np
 import pandas as pd
 from pandera.typing import DataFrame
@@ -105,12 +105,14 @@ def load_data_for_internal_cnec(
     if observed_flow is None or observed_flow.empty or cnec_ds.empty:
         return None
 
-    index_alignment = pd.DatetimeIndex((
-        set(cnec_ds.index.get_level_values(JaoData.time))
-        .intersection(observed_flow.index)
-        .intersection(jaodata_and_net_positions.observedNPs.index)
-        .intersection(jaodata_and_net_positions.basecaseNPs.index)
-    ))
+    index_alignment = pd.DatetimeIndex(
+        (
+            set(cnec_ds.index.get_level_values(JaoData.time))
+            .intersection(observed_flow.index)
+            .intersection(jaodata_and_net_positions.observedNPs.index)
+            .intersection(jaodata_and_net_positions.basecaseNPs.index)
+        )
+    )
 
     cnec_ds = cnec_ds.loc[index_alignment, :]
     observed_flow = observed_flow.loc[index_alignment, :]
@@ -162,13 +164,14 @@ def get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZo
     else:
         return bz1, bz2
 
+
 def substring_get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZonesEnum] | tuple[None, None]:
     for bz_from in BiddingZonesEnum:
         for bz_to in BiddingZonesEnum:
             if bz_from == bz_to:
                 continue
-            
-            if bz_from.value in cnecName and bz_to.value in cnecName: 
+
+            if bz_from.value in cnecName and bz_to.value in cnecName:
                 dist1 = Levenshtein.distance(f"{bz_from.value} {bz_to.value}", cnecName)
                 dist2 = Levenshtein.distance(f"{bz_from.value} {bz_to.value}", cnecName)
                 if dist1 < dist2:
@@ -176,7 +179,6 @@ def substring_get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum,
                 else:
                     return bz_from, bz_to
     return (None, None)
-
 
 
 def regex_get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZonesEnum] | tuple[None, None]:

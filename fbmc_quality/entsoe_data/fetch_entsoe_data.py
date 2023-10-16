@@ -1,21 +1,21 @@
-from contextlib import suppress
 import logging
 import os
+from contextlib import suppress
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Generator, Iterable, Sequence
-import duckdb
 
-import pandas as pd
+import duckdb
 import numpy as np
+import pandas as pd
 import psutil
 from entsoe import Area, EntsoePandasClient
 from joblib import Parallel, delayed
 from pandera.typing import DataFrame
 from requests import Session
 from sqlalchemy import Engine, create_engine
-from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
 
+from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
 from fbmc_quality.dataframe_schemas.schemas import Base, NetPosition
 from fbmc_quality.enums.bidding_zones import BiddingZonesEnum
 from fbmc_quality.jao_data.analyse_jao_data import is_elements_equal_to_target
@@ -258,10 +258,11 @@ def _get_net_position_from_crossborder_flows(
     return df_list
 
 
-def _get_cross_border_flow(start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area, _recursive: bool=False) -> pd.Series:
-
+def _get_cross_border_flow(
+    start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area, _recursive: bool = False
+) -> pd.Series:
     default_folder_path = Path.home() / Path(".flowbased_data")
-    db_path = default_folder_path / 'linearisation_analysis.duckdb'
+    db_path = default_folder_path / "linearisation_analysis.duckdb"
 
     connection = duckdb.connect(str(db_path), read_only=False)
 
@@ -272,17 +273,17 @@ def _get_cross_border_flow(start: pd.Timestamp, end: pd.Timestamp, area_from: Ar
                 "SELECT * FROM ENTSOE WHERE time BETWEEN"
                 f"'{start + timedelta(hours=get_utc_delta(start))}' AND '{end + timedelta(hours=get_utc_delta(start))}'"
                 f"AND area_from='{area_from.value}' AND area_to='{area_to.value}'"
-             )
-            ).df()
+            )
+        ).df()
     connection.close()
 
     engine = create_engine("duckdb:///" + str(db_path))
     Base.metadata.create_all(engine)
 
     if cached_data is not None and not cached_data.empty:
-        cached_data['time'] = cached_data['time'].dt.tz_localize('Europe/Oslo').dt.tz_convert('UTC')
-        cached_retval = cached_data.set_index('time')['flow']
-        unique_timestamps: Sequence[datetime] = np.sort(cached_data['time'].unique().to_pydatetime())
+        cached_data["time"] = cached_data["time"].dt.tz_localize("Europe/Oslo").dt.tz_convert("UTC")
+        cached_retval = cached_data.set_index("time")["flow"]
+        unique_timestamps: Sequence[datetime] = np.sort(cached_data["time"].unique().to_pydatetime())
         hours = (end - start).total_seconds() // (60 * 60)
         quarters = (end - start).total_seconds() // (60 * 15)
 
@@ -292,21 +293,23 @@ def _get_cross_border_flow(start: pd.Timestamp, end: pd.Timestamp, area_from: Ar
     data = _get_cross_border_flow_from_api(start, end, area_from, area_to)
     cache_flow_data(engine, data, area_from, area_to)
     if _recursive:
-        raise RuntimeError('Recurse calls did not yield all data from ENTSOE - report this error to the maintainer')
+        raise RuntimeError("Recurse calls did not yield all data from ENTSOE - report this error to the maintainer")
     return _get_cross_border_flow(start, end, area_from, area_to, _recursive=True)
 
-    
-def cache_flow_data(engine: Engine, data: pd.Series, area_from: Area, area_to: Area):
-    
-    frame = pd.DataFrame({'flow': data})
-    frame['area_from'] = area_from.value
-    frame['area_to'] = area_to.value
-    frame = frame.rename_axis('time').reset_index()
-    frame['time'] = frame['time'].dt.tz_convert('UTC')
-    frame['ROW_KEY'] = frame["area_from"] + '_'  + frame["area_to"] + '_' + frame['time'].astype(str)
-    store_df_in_table('ENTSOE', frame, engine)
 
-def _get_cross_border_flow_from_api(start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area) -> pd.Series:
+def cache_flow_data(engine: Engine, data: pd.Series, area_from: Area, area_to: Area):
+    frame = pd.DataFrame({"flow": data})
+    frame["area_from"] = area_from.value
+    frame["area_to"] = area_to.value
+    frame = frame.rename_axis("time").reset_index()
+    frame["time"] = frame["time"].dt.tz_convert("UTC")
+    frame["ROW_KEY"] = frame["area_from"] + "_" + frame["area_to"] + "_" + frame["time"].astype(str)
+    store_df_in_table("ENTSOE", frame, engine)
+
+
+def _get_cross_border_flow_from_api(
+    start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area
+) -> pd.Series:
     logging.getLogger().info(f"Fetching ENTSOE data from {start} to {end} for {area_from} to {area_to}")
 
     client = get_entsoe_client()

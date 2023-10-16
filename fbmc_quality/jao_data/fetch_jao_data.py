@@ -11,13 +11,13 @@ from typing import Iterable, TypeVar
 import aiohttp
 import duckdb
 import pandas as pd
+import pytz
 from click import FileError
 from pandera.typing import DataFrame
-import pytz
 from sqlalchemy import Engine, Insert, Table, create_engine, text
 from sqlalchemy.orm.session import Session
-from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
 
+from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
 from fbmc_quality.dataframe_schemas.schemas import Base, JaoData, JaoModel
 from fbmc_quality.jao_data.get_utc_delta import get_utc_delta
 
@@ -63,7 +63,6 @@ async def _fetch_jao_dataframe_from_datetime(
     else:
         data_from_jao = await get_ptdfs(date, session)
 
-
     df = pd.DataFrame(data_from_jao["data"])  # type: ignore
     df = df.loc[df[JaoData.cnecName].notnull(), :]
     df[JaoData.cnec_id] = df.apply(
@@ -75,14 +74,15 @@ async def _fetch_jao_dataframe_from_datetime(
     for i, col_name in enumerate(col):
         col[i] = col_name.replace("ptdf_", "")
     df.columns = col
-    
-    df['ROW_KEY'] = df[JaoData.cnec_id] + "_" + df[JaoData.time].astype(str)
-    df = df.drop_duplicates(['ROW_KEY'])
-    
+
+    df["ROW_KEY"] = df[JaoData.cnec_id] + "_" + df[JaoData.time].astype(str)
+    df = df.drop_duplicates(["ROW_KEY"])
+
     store_df_in_table("JAO", df, engine)
-    df = df.set_index([JaoData.cnec_id, JaoData.time]).drop('ROW_KEY', axis=1)
+    df = df.set_index([JaoData.cnec_id, JaoData.time]).drop("ROW_KEY", axis=1)
     df_validated: DataFrame[JaoData] = JaoData.validate(df)  # type: ignore
     return df_validated
+
 
 async def _fetch_jao_dataframe_timeseries(
     time_points: list[datetime], write_path: Path | None = None
@@ -92,7 +92,7 @@ async def _fetch_jao_dataframe_timeseries(
         write_path = Path(gettempdir())
 
     all_results: list[DataFrame[JaoData]] = []
-    engine = create_engine("duckdb:///" + str(write_path / 'linearisation_analysis.duckdb'))
+    engine = create_engine("duckdb:///" + str(write_path / "linearisation_analysis.duckdb"))
 
     async with aiohttp.ClientSession() as session:
         for time_point in time_points:
@@ -116,8 +116,6 @@ def create_default_folder(default_folder_path: Path):
 def try_jao_cache_before_async(
     from_time: timedata, to_time: timedata, write_path: Path
 ) -> tuple[DataFrame[JaoData] | None, list[datetime]]:
-
-
     if isinstance(from_time, date):
         dt_from_time = datetime(from_time.year, from_time.month, from_time.day)
     else:
@@ -127,19 +125,22 @@ def try_jao_cache_before_async(
         dt_to_time = datetime(to_time.year, to_time.month, to_time.day)
     else:
         dt_to_time = to_time
-    
+
     loop_time = dt_from_time
-    time_range: list[datetime]  = []
-    while loop_time < (dt_to_time - timedelta(hours=1)) :
+    time_range: list[datetime] = []
+    while loop_time < (dt_to_time - timedelta(hours=1)):
         time_range.append(loop_time.replace(tzinfo=pytz.UTC))
         loop_time += timedelta(hours=1)
-    
 
-    connection = duckdb.connect(str(write_path / 'linearisation_analysis.duckdb'), read_only=False)
+    connection = duckdb.connect(str(write_path / "linearisation_analysis.duckdb"), read_only=False)
     try:
-        cached_data = connection.sql(
-            f"SELECT * FROM JAO WHERE time BETWEEN '{from_time - timedelta(hours=get_utc_delta(from_time))}' AND '{to_time - timedelta(hours=get_utc_delta(from_time))}'"
-            ).df().drop('ROW_KEY', axis=1)
+        cached_data = (
+            connection.sql(
+                f"SELECT * FROM JAO WHERE time BETWEEN '{from_time - timedelta(hours=get_utc_delta(from_time))}' AND '{to_time - timedelta(hours=get_utc_delta(from_time))}'"
+            )
+            .df()
+            .drop("ROW_KEY", axis=1)
+        )
     except duckdb.CatalogException:
         return None, time_range
     connection.close()
@@ -147,15 +148,13 @@ def try_jao_cache_before_async(
     if cached_data.empty:
         return None, time_range
     else:
-        cached_data['time'] = cached_data['time'].dt.tz_localize('Europe/Oslo').dt.tz_convert('UTC')
-        unique_hours: Iterable[datetime] = cached_data['time'].unique().to_pydatetime()
-        subset_time = [loop_time for loop_time in time_range if loop_time not in unique_hours ]
-        return cached_data.set_index(['cnec_id', 'time']), subset_time
+        cached_data["time"] = cached_data["time"].dt.tz_localize("Europe/Oslo").dt.tz_convert("UTC")
+        unique_hours: Iterable[datetime] = cached_data["time"].unique().to_pydatetime()
+        subset_time = [loop_time for loop_time in time_range if loop_time not in unique_hours]
+        return cached_data.set_index(["cnec_id", "time"]), subset_time
 
 
-def fetch_jao_dataframe_timeseries(
-    from_time: timedata, to_time: timedata
-) -> DataFrame[JaoData] | None:
+def fetch_jao_dataframe_timeseries(from_time: timedata, to_time: timedata) -> DataFrame[JaoData] | None:
     """Reads JAO data from the API and returns the corresponding frame.
     Pulls data from cache in the `write_path`
 
@@ -178,7 +177,7 @@ def fetch_jao_dataframe_timeseries(
     create_default_folder(default_folder_path)
     write_path = default_folder_path
 
-    engine = create_engine("duckdb:///" + str(write_path / 'linearisation_analysis.duckdb'))
+    engine = create_engine("duckdb:///" + str(write_path / "linearisation_analysis.duckdb"))
     Base.metadata.create_all(engine)
 
     all_results = None
@@ -201,7 +200,7 @@ def fetch_jao_dataframe_timeseries(
         return_frame = pd.concat([cached_results, all_results]).sort_index()
         return return_frame  # type: ignore
     elif all_results is not None:
-        return all_results.sort_index() # type: ignore
+        return all_results.sort_index()  # type: ignore
 
 
 """

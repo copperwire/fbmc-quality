@@ -1,8 +1,7 @@
-import pytz
-
-
 from datetime import date, datetime
 from typing import Literal
+
+import pytz
 
 
 def get_utc_delta(input_date: date | datetime) -> Literal[1, 2]:

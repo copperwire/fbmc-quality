@@ -7,9 +7,17 @@ from pandera.typing import Index, Series
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import mapped_column
 
 Base = declarative_base()
+
+class CorridorFlowModel(Base):
+    __tablename__ = "ENTSOE"
+
+    time = Column(DateTime) #: Index value
+    ROW_KEY = Column(String, primary_key=True)
+    area_from = Column(String)
+    area_to = Column(String)
+    flow = Column(Float)
 
 class JaoModel(Base):  # type: ignore
     __tablename__ = "JAO"

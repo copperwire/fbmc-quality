@@ -14,8 +14,9 @@ import pandas as pd
 from click import FileError
 from pandera.typing import DataFrame
 import pytz
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, Insert, Table, create_engine, text
 from sqlalchemy.orm.session import Session
+from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
 
 from fbmc_quality.dataframe_schemas.schemas import Base, JaoData, JaoModel
 from fbmc_quality.jao_data.get_utc_delta import get_utc_delta
@@ -77,8 +78,8 @@ async def _fetch_jao_dataframe_from_datetime(
     
     df['ROW_KEY'] = df[JaoData.cnec_id] + "_" + df[JaoData.time].astype(str)
     df = df.drop_duplicates(['ROW_KEY'])
-    df.to_sql('JAO', engine, if_exists='append', index=False)
     
+    store_df_in_table("JAO", df, engine)
     df = df.set_index([JaoData.cnec_id, JaoData.time]).drop('ROW_KEY', axis=1)
     df_validated: DataFrame[JaoData] = JaoData.validate(df)  # type: ignore
     return df_validated
@@ -115,6 +116,8 @@ def create_default_folder(default_folder_path: Path):
 def try_jao_cache_before_async(
     from_time: timedata, to_time: timedata, write_path: Path
 ) -> tuple[DataFrame[JaoData] | None, list[datetime]]:
+
+
     if isinstance(from_time, date):
         dt_from_time = datetime(from_time.year, from_time.month, from_time.day)
     else:
@@ -135,7 +138,7 @@ def try_jao_cache_before_async(
     connection = duckdb.connect(str(write_path / 'linearisation_analysis.duckdb'), read_only=False)
     try:
         cached_data = connection.sql(
-            f"SELECT * FROM JAO WHERE time BETWEEN '{from_time - timedelta(hours=get_utc_delta(from_time))}' AND '{to_time+ timedelta(hours=get_utc_delta(from_time))}'"
+            f"SELECT * FROM JAO WHERE time BETWEEN '{from_time - timedelta(hours=get_utc_delta(from_time))}' AND '{to_time - timedelta(hours=get_utc_delta(from_time))}'"
             ).df().drop('ROW_KEY', axis=1)
     except duckdb.CatalogException:
         return None, time_range

@@ -105,12 +105,13 @@ def load_data_for_internal_cnec(
     if observed_flow is None or observed_flow.empty or cnec_ds.empty:
         return None
 
-    index_alignment = (
-        cnec_ds.index.get_level_values(JaoData.time)
+    index_alignment = pd.DatetimeIndex((
+        set(cnec_ds.index.get_level_values(JaoData.time))
         .intersection(observed_flow.index)
         .intersection(jaodata_and_net_positions.observedNPs.index)
         .intersection(jaodata_and_net_positions.basecaseNPs.index)
-    )
+    ))
+
     cnec_ds = cnec_ds.loc[index_alignment, :]
     observed_flow = observed_flow.loc[index_alignment, :]
     jaodata_and_net_positions = JaoDataAndNPS(

@@ -65,7 +65,7 @@ def compute_cnec_vulnerability_to_err(
     ram_bc = cnec_data[JaoData.fmax] - cnec_data[JaoData.fref]
     vulnerability_score = (linearisation_error / ram_obs).abs()
     basecase_relative_margin = (ram_obs / ram_bc).abs()
-    
+
     return_frame = pd.DataFrame(
         {
             "vulnerability_score": vulnerability_score,

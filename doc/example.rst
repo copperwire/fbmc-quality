@@ -7,7 +7,7 @@ Pulling net positions from ENTSOE-Transparency
     To pull data from the ENTSOE-Transparency you need to set API keys as noted in the :ref:`configuration guide <API keys>`.
 
 Pulling data from JAO and ENTSOE-Transparency is the first step of the analysis. The data can be pulled from
-the remote APIs or from the local cache. The local cache is by default stored at `~/.linearisation_error` and contains hourly snapshots of data.
+the remote APIs or from the local cache. The local cache is by default stored at `~/.linearisation_data` and contains hourly snapshots of data.
 To pull data from JAO and compute the Net Positions in the Base Case (Common Grid Model Net Positions)::
 
     from datetime import date

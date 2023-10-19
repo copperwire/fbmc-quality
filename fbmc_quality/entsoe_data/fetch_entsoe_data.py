@@ -3,7 +3,7 @@ import os
 from contextlib import suppress
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Generator, Iterable, Sequence
+from typing import Generator, Sequence
 
 import duckdb
 import numpy as np
@@ -15,6 +15,7 @@ from pandera.typing import DataFrame
 from requests import Session
 from sqlalchemy import Engine, create_engine
 
+from fbmc_quality.dataframe_schemas.cache_db import DB_PATH
 from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
 from fbmc_quality.dataframe_schemas.schemas import Base, NetPosition
 from fbmc_quality.enums.bidding_zones import BiddingZonesEnum
@@ -261,11 +262,8 @@ def _get_net_position_from_crossborder_flows(
 def _get_cross_border_flow(
     start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area, _recursive: bool = False
 ) -> pd.Series:
-    default_folder_path = Path.home() / Path(".flowbased_data")
-    db_path = default_folder_path / "linearisation_analysis.duckdb"
 
-    connection = duckdb.connect(str(db_path), read_only=False)
-
+    connection = duckdb.connect(str(DB_PATH), read_only=False)
     cached_data = None
     with suppress(duckdb.CatalogException):
         cached_data = connection.sql(
@@ -277,7 +275,7 @@ def _get_cross_border_flow(
         ).df()
     connection.close()
 
-    engine = create_engine("duckdb:///" + str(db_path))
+    engine = create_engine("duckdb:///" + str(DB_PATH))
     Base.metadata.create_all(engine)
 
     if cached_data is not None and not cached_data.empty:

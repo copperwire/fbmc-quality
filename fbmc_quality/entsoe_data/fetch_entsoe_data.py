@@ -2,15 +2,12 @@ import logging
 import os
 from contextlib import suppress
 from datetime import date, datetime, timedelta
-from pathlib import Path
-from typing import Generator, Sequence
+from typing import Sequence
 
 import duckdb
 import numpy as np
 import pandas as pd
-import psutil
 from entsoe import Area, EntsoePandasClient
-from joblib import Parallel, delayed
 from pandera.typing import DataFrame
 from requests import Session
 from sqlalchemy import Engine, create_engine
@@ -130,8 +127,8 @@ def convert_date_to_utc_pandas(date_obj: date | datetime) -> pd.Timestamp:
         return date_obj
     if hasattr(date_obj, "tzinfo") and date_obj.tzinfo is not None:
         return pd.Timestamp(date_obj)
-        
-    return pd.Timestamp(date_obj, tz="Europe/Oslo").tz_convert('UTC')
+
+    return pd.Timestamp(date_obj, tz="Europe/Oslo").tz_convert("UTC")
 
 
 def get_entsoe_client(session: Session | None = None) -> EntsoePandasClient:
@@ -140,35 +137,6 @@ def get_entsoe_client(session: Session | None = None) -> EntsoePandasClient:
         raise EnvironmentError("No environment variable named ENTSOE_API_KEY")
 
     return EntsoePandasClient(api_key, session=session)
-
-
-def get_np_data_from_cache(
-    start: pd.Timestamp, end: pd.Timestamp, write_path: Path
-) -> tuple[DataFrame[NetPosition], pd.Timestamp] | tuple[None, pd.Timestamp]:
-    current_time = start
-    all_paths = []
-
-    while current_time < end:
-        file_path = write_path / f'net_positions_{current_time.strftime("%Y%m%dT%H")}.arrow'
-        if file_path.exists():
-            all_paths.append(file_path)
-        else:
-            break
-        current_time += timedelta(hours=1)
-
-    if all_paths:
-        cores = psutil.cpu_count()
-        frames: Generator[pd.DataFrame, None, None] = Parallel(cores, backend="loky", return_as="generator")(
-            delayed(pd.read_feather)(path) for path in all_paths
-        )
-        return pd.concat(frames), current_time
-    else:
-        return None, current_time  # type: ignore
-
-
-def cache_np_data(frame: pd.DataFrame, write_path: Path) -> None:
-    for hour, sub_frame in frame.iterrows():
-        sub_frame.to_frame().T.to_feather(write_path / f'net_positions_{hour.strftime("%Y%m%dT%H")}.arrow')
 
 
 def fetch_net_position_from_crossborder_flows(
@@ -199,7 +167,6 @@ def fetch_net_position_from_crossborder_flows(
 
     start_pd = convert_date_to_utc_pandas(start)
     end_pd = convert_date_to_utc_pandas(end)
-    logger = logging.getLogger()
 
     retval = _get_net_position_from_crossborder_flows(start_pd, end_pd)
     retval = pd.concat(retval, axis=1)
@@ -263,7 +230,6 @@ def _get_net_position_from_crossborder_flows(
 def _get_cross_border_flow(
     start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area, _recursive: bool = False
 ) -> pd.Series:
-
     connection = duckdb.connect(str(DB_PATH), read_only=False)
     cached_data = None
     with suppress(duckdb.CatalogException):

@@ -4,8 +4,6 @@ import logging
 import uuid
 import warnings
 from datetime import date, datetime, timedelta
-from pathlib import Path
-from tempfile import gettempdir
 from typing import Iterable, TypeVar
 
 import aiohttp
@@ -14,8 +12,8 @@ import pandas as pd
 import pytz
 from pandera.typing import DataFrame
 from sqlalchemy import Engine, create_engine
-from fbmc_quality.dataframe_schemas.cache_db import DB_PATH
 
+from fbmc_quality.dataframe_schemas.cache_db import DB_PATH
 from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
 from fbmc_quality.dataframe_schemas.schemas import Base, JaoData
 from fbmc_quality.jao_data.get_utc_delta import get_utc_delta
@@ -83,9 +81,7 @@ async def _fetch_jao_dataframe_from_datetime(
     return df_validated
 
 
-async def _fetch_jao_dataframe_timeseries(
-    time_points: list[datetime]
-) -> DataFrame[JaoData] | None:
+async def _fetch_jao_dataframe_timeseries(time_points: list[datetime]) -> DataFrame[JaoData] | None:
     logging.getLogger().info(f"Fetching JAO data from {len(time_points)} hours")
 
     all_results: list[DataFrame[JaoData]] = []
@@ -126,7 +122,11 @@ def try_jao_cache_before_async(
     try:
         cached_data = (
             connection.sql(
-                f"SELECT * FROM JAO WHERE time BETWEEN '{from_time + timedelta(hours=get_utc_delta(from_time))}' AND '{to_time + timedelta(hours=get_utc_delta(from_time))}'"
+                (
+                    "SELECT * FROM JAO WHERE time BETWEEN"
+                    f"'{from_time + timedelta(hours=get_utc_delta(from_time))}'"
+                    f"AND '{to_time + timedelta(hours=get_utc_delta(from_time))}'"
+                )
             )
             .df()
             .drop("ROW_KEY", axis=1)
@@ -144,10 +144,18 @@ def try_jao_cache_before_async(
 
         return cached_data, subset_time
 
+
 def formatting_cache_to_retval(cached_data: pd.DataFrame) -> pd.DataFrame:
-    cached_data[JaoData.time] = cached_data[JaoData.time].dt.tz_localize("Europe/Oslo").dt.tz_convert("UTC").astype(pd.DatetimeTZDtype('ns', 'UTC'))
+    cached_data[JaoData.time] = (
+        cached_data[JaoData.time]
+        .dt.tz_localize("Europe/Oslo")
+        .dt.tz_convert("UTC")
+        .astype(pd.DatetimeTZDtype("ns", "UTC"))
+    )
     cached_data[JaoData.cnec_id] = cached_data[JaoData.cnec_id].astype(pd.StringDtype())
-    cached_data[JaoData.dateTimeUtc] = cached_data[JaoData.dateTimeUtc].dt.tz_localize('UTC').astype(pd.DatetimeTZDtype('ns', 'UTC'))
+    cached_data[JaoData.dateTimeUtc] = (
+        cached_data[JaoData.dateTimeUtc].dt.tz_localize("UTC").astype(pd.DatetimeTZDtype("ns", "UTC"))
+    )
     cached_data[JaoData.contingencies] = cached_data[JaoData.contingencies].astype(pd.StringDtype())
     cached_data = cached_data.set_index([JaoData.cnec_id, JaoData.time])
     cached_data = cached_data.sort_index(level=JaoData.time)
@@ -185,11 +193,9 @@ def fetch_jao_dataframe_timeseries(from_time: timedata, to_time: timedata) -> Da
             all_results = asyncio.run(_fetch_jao_dataframe_timeseries(new_start))
         except RuntimeError:
             loop = asyncio.get_event_loop()
-            all_results = asyncio.run_coroutine_threadsafe(
-                _fetch_jao_dataframe_timeseries(new_start), loop
-            ).result()
+            all_results = asyncio.run_coroutine_threadsafe(_fetch_jao_dataframe_timeseries(new_start), loop).result()
     elif cached_results is not None:
-        logger.info(f"JAO: Full Cache Hit")
+        logger.info("JAO: Full Cache Hit")
         return cached_results
 
     if cached_results is not None and all_results is not None:

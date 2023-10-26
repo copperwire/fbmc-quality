@@ -2,9 +2,7 @@ import logging
 import os
 from contextlib import suppress
 from datetime import date, datetime, timedelta
-import time
 from typing import Sequence
-from cachetools import cached
 
 import duckdb
 import numpy as np
@@ -122,7 +120,7 @@ BIDDINGZONE_CROSS_BORDER_NP_MAP: dict[BiddingZonesEnum, list[BiddingZonesEnum]] 
         BiddingZonesEnum.FI_EL,
     ],
 }
-    
+
 
 def convert_date_to_utc_pandas(date_obj: date | datetime) -> pd.Timestamp:
     if isinstance(date_obj, pd.Timestamp):
@@ -221,6 +219,7 @@ def _get_net_position_from_crossborder_flows(
 
     return df_list
 
+
 def resample_to_hour_and_replace(data):
     for i in range(len(data)):
         if data[i].index.freqstr != "H":
@@ -229,8 +228,7 @@ def resample_to_hour_and_replace(data):
 
 def _get_cross_border_flow(
     start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area, _recurse: bool = True
-) -> 'pd.Series[float]':
-
+) -> "pd.Series[float]":
     engine = create_engine("duckdb:///" + str(DB_PATH))
     Base.metadata.create_all(engine)
 
@@ -262,14 +260,18 @@ def _get_cross_border_flow(
         raise RuntimeError("Recurse calls did not yield all data from ENTSOE - report this error to the maintainer")
     return _get_cross_border_flow(start, end, area_from, area_to, _recurse=False)
 
-def cast_cache_to_correct_types(cached_data: pd.DataFrame)-> 'pd.Series[float]':
-    cached_data["time"] = cached_data["time"].dt.tz_localize("Europe/Oslo").dt.tz_convert("UTC").astype(pd.DatetimeTZDtype('ns', 'UTC'))
-    cached_data['flow'] = cached_data['flow'].astype(pd.Float64Dtype())
+
+def cast_cache_to_correct_types(cached_data: pd.DataFrame) -> "pd.Series[float]":
+    cached_data["time"] = (
+        cached_data["time"].dt.tz_localize("Europe/Oslo").dt.tz_convert("UTC").astype(pd.DatetimeTZDtype("ns", "UTC"))
+    )
+    cached_data["flow"] = cached_data["flow"].astype(pd.Float64Dtype())
     cached_retval = cached_data.set_index("time")["flow"]
-    cached_retval.index.rename('time', True)
+    cached_retval.index.rename("time", True)
     with suppress(ValueError):
         cached_retval.index.freq = pd.infer_freq(cached_retval.index)
     return cached_retval
+
 
 def query_and_cache_data(start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area, engine: Engine):
     data = _get_cross_border_flow_from_api(start, end, area_from, area_to)
@@ -277,6 +279,7 @@ def query_and_cache_data(start: pd.Timestamp, end: pd.Timestamp, area_from: Area
 
     cache_flow_data(engine, data - other_data, area_from, area_to)
     cache_flow_data(engine, other_data - data, area_to, area_from)
+
 
 def cache_flow_data(engine: Engine, data: pd.Series, area_from: Area, area_to: Area):
     frame = pd.DataFrame({"flow": data})
@@ -289,7 +292,7 @@ def cache_flow_data(engine: Engine, data: pd.Series, area_from: Area, area_to: A
 
 def _get_cross_border_flow_from_api(
     start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area
-) -> 'pd.Series[float]':
+) -> "pd.Series[float]":
     logging.getLogger().info(f"Fetching ENTSOE data from {start} to {end} for {area_from} to {area_to}")
 
     client = get_entsoe_client()
@@ -299,7 +302,7 @@ def _get_cross_border_flow_from_api(
         start=start,
         end=end,
     )
-    crossborder_flow.index = crossborder_flow.index.tz_convert('UTC')
+    crossborder_flow.index = crossborder_flow.index.tz_convert("UTC")
     crossborder_flow = crossborder_flow.astype(pd.Float64Dtype())
 
     return crossborder_flow
@@ -353,6 +356,7 @@ def fetch_observed_entsoe_data_for_cnec(
     return_frame = return_frame.sort_index()
     return return_frame
 
+
 def lookup_entsoe_areas_from_bz(from_area: BiddingZonesEnum, to_area: BiddingZonesEnum) -> tuple[Area, Area]:
     if from_area in ENSTOE_BIDDING_ZONE_MAP:
         enstoe_from_area = ENSTOE_BIDDING_ZONE_MAP[from_area]
@@ -369,4 +373,4 @@ def lookup_entsoe_areas_from_bz(from_area: BiddingZonesEnum, to_area: BiddingZon
             entsoe_to_area = ENTSOE_HVDC_ZONE_MAP[to_area][0]
     else:
         raise ValueError(f"No mapping for {to_area}")
-    return enstoe_from_area,entsoe_to_area
+    return enstoe_from_area, entsoe_to_area

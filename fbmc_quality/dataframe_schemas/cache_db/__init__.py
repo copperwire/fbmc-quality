@@ -1,12 +1,15 @@
-from pathlib import Path
-from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
 import os
+from pathlib import Path
+
+from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
+
 
 def create_default_folder(default_folder_path: Path):
     try:
         default_folder_path.mkdir(parents=True, exist_ok=True)
     except Exception as e:
         raise FileExistsError(f"Error creating default folder: {e}") from e
+
 
 path_to_db = os.getenv("DB_PATH")
 

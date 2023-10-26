@@ -138,13 +138,20 @@ def try_jao_cache_before_async(
     if cached_data.empty:
         return None, time_range
     else:
-        cached_data[JaoData.time] = cached_data[JaoData.time].dt.tz_localize("Europe/Oslo").dt.tz_convert("UTC").astype(pd.DatetimeTZDtype('ns', 'UTC'))
-        cached_data[JaoData.cnec_id] = cached_data[JaoData.cnec_id].astype(pd.StringDtype())
-        cached_data[JaoData.dateTimeUtc] = cached_data[JaoData.dateTimeUtc].dt.tz_localize('UTC').astype(pd.DatetimeTZDtype('ns', 'UTC'))
-        cached_data[JaoData.contingencies] = cached_data[JaoData.contingencies].astype(pd.StringDtype())
-        unique_hours: Iterable[datetime] = cached_data[JaoData.time].unique().to_pydatetime()
+        cached_data = formatting_cache_to_retval(cached_data)
+        unique_hours: Iterable[datetime] = cached_data.index.get_level_values(JaoData.time).unique().to_pydatetime()
         subset_time = [loop_time for loop_time in time_range if loop_time not in unique_hours]
-        return cached_data.set_index([JaoData.cnec_id, JaoData.time]), subset_time
+
+        return cached_data, subset_time
+
+def formatting_cache_to_retval(cached_data: pd.DataFrame) -> pd.DataFrame:
+    cached_data[JaoData.time] = cached_data[JaoData.time].dt.tz_localize("Europe/Oslo").dt.tz_convert("UTC").astype(pd.DatetimeTZDtype('ns', 'UTC'))
+    cached_data[JaoData.cnec_id] = cached_data[JaoData.cnec_id].astype(pd.StringDtype())
+    cached_data[JaoData.dateTimeUtc] = cached_data[JaoData.dateTimeUtc].dt.tz_localize('UTC').astype(pd.DatetimeTZDtype('ns', 'UTC'))
+    cached_data[JaoData.contingencies] = cached_data[JaoData.contingencies].astype(pd.StringDtype())
+    cached_data = cached_data.set_index([JaoData.cnec_id, JaoData.time])
+    cached_data = cached_data.sort_index(level=JaoData.time)
+    return cached_data
 
 
 def fetch_jao_dataframe_timeseries(from_time: timedata, to_time: timedata) -> DataFrame[JaoData] | None:

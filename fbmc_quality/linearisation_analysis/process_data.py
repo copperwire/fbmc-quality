@@ -112,7 +112,7 @@ def load_data_for_internal_cnec(
             .intersection(jaodata_and_net_positions.observedNPs.index)
             .intersection(jaodata_and_net_positions.basecaseNPs.index)
         )
-    )
+    ).sort_values()
 
     cnec_ds = cnec_ds.loc[index_alignment, :]
     observed_flow = observed_flow.loc[index_alignment, :]

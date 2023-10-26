@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fbmc-linearisation-analysis"
-version = "0.2.0"
+version = "0.2.1"
 description = ""
 authors = ["Robert Solli <robert@xal.no>", "Kristan Authen <kristian.authen@statnett.no>"]
 readme = "README.md"
@@ -49,6 +49,7 @@ sphinx-toolbox = "^3.5.0"
 flake8 = "^6.1.0"
 pytest = "^7.4.2"
 pytest-dotenv = "^0.5.2"
+snakeviz = "^2.2.0"
 
 [tool.poetry.extras]
 app-template = ["plotly", "streamlit", "streamlit-searchbox", "simstring-fast"]

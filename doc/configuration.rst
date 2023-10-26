@@ -18,5 +18,5 @@ Caching
 
 .. _CACHING:
 
-The package stores data in a `duckdb <https://duckdb.org/>` database. This database is persisted on disk at `~/.linearisation_data` by default.
+The package stores data in a `duckdb <https://duckdb.org/>` database. This database is persisted on disk at `~/.flowbased_data` by default.
 This storage location can be changed by setting the environment variable :code:`DB_PATH`. This variable should be a path + the name of the database ending with a ".db" or ".duckdb" file extension.

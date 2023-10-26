@@ -2,7 +2,9 @@ import logging
 import os
 from contextlib import suppress
 from datetime import date, datetime, timedelta
+import time
 from typing import Sequence
+from cachetools import cached
 
 import duckdb
 import numpy as np
@@ -120,7 +122,7 @@ BIDDINGZONE_CROSS_BORDER_NP_MAP: dict[BiddingZonesEnum, list[BiddingZonesEnum]] 
         BiddingZonesEnum.FI_EL,
     ],
 }
-
+    
 
 def convert_date_to_utc_pandas(date_obj: date | datetime) -> pd.Timestamp:
     if isinstance(date_obj, pd.Timestamp):
@@ -168,7 +170,7 @@ def fetch_net_position_from_crossborder_flows(
     start_pd = convert_date_to_utc_pandas(start)
     end_pd = convert_date_to_utc_pandas(end)
 
-    retval = _get_net_position_from_crossborder_flows(start_pd, end_pd)
+    retval = _get_net_position_from_crossborder_flows(start_pd, end_pd, bidding_zones)
     retval = pd.concat(retval, axis=1)
 
     if check_for_zero_zum:
@@ -207,18 +209,11 @@ def _get_net_position_from_crossborder_flows(
             series_otherdir = _get_cross_border_flow(start, end, area_to, area_from)
             other_direction_data.append(series_otherdir)
 
-        resampled_data = []
-        for series in data:
-            if series.index.freqstr != "H":
-                resampled_data.append(series.resample("H", label="left").mean())
+        resample_to_hour_and_replace(data)
+        resample_to_hour_and_replace(other_direction_data)
 
-        resampled_other_direction_data = []
-        for series in other_direction_data:
-            if series.index.freqstr != "H":
-                resampled_other_direction_data.append(series.resample("H", label="left").mean())
-
-        left_data = pd.concat(resampled_data, axis=1).sum(axis=1).tz_convert("UTC")
-        right_data = pd.concat(resampled_other_direction_data, axis=1).sum(axis=1).tz_convert("UTC")
+        left_data = pd.concat(data, axis=1).sum(axis=1)
+        right_data = pd.concat(other_direction_data, axis=1).sum(axis=1)
 
         _df_bz = left_data - right_data
         _df_bz.name = bidding_zone.value
@@ -226,10 +221,19 @@ def _get_net_position_from_crossborder_flows(
 
     return df_list
 
+def resample_to_hour_and_replace(data):
+    for i in range(len(data)):
+        if data[i].index.freqstr != "H":
+            data[i] = data[i].resample("H", label="left").mean()
+
 
 def _get_cross_border_flow(
-    start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area, _recursive: bool = False
-) -> pd.Series:
+    start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area, _recurse: bool = True
+) -> 'pd.Series[float]':
+
+    engine = create_engine("duckdb:///" + str(DB_PATH))
+    Base.metadata.create_all(engine)
+
     connection = duckdb.connect(str(DB_PATH), read_only=False)
     cached_data = None
     with suppress(duckdb.CatalogException):
@@ -242,39 +246,50 @@ def _get_cross_border_flow(
         ).df()
     connection.close()
 
-    engine = create_engine("duckdb:///" + str(DB_PATH))
-    Base.metadata.create_all(engine)
-
     if cached_data is not None and not cached_data.empty:
-        cached_data["time"] = cached_data["time"].dt.tz_localize("Europe/Oslo").dt.tz_convert("UTC")
-        cached_retval = cached_data.set_index("time")["flow"]
-        unique_timestamps: Sequence[datetime] = np.sort(cached_data["time"].unique().to_pydatetime())
+        cached_retval = cast_cache_to_correct_types(cached_data)
+        cached_retval = cached_retval[(start <= cached_retval.index) & (cached_retval.index < end)]
+        unique_timestamps: Sequence[datetime] = np.sort(cached_retval.index.unique().to_pydatetime())
         hours = (end - start).total_seconds() // (60 * 60)
         quarters = (end - start).total_seconds() // (60 * 15)
 
         if len(unique_timestamps) == hours or len(unique_timestamps) == quarters:
             return cached_retval
 
-    data = _get_cross_border_flow_from_api(start, end, area_from, area_to)
-    cache_flow_data(engine, data, area_from, area_to)
-    if _recursive:
-        raise RuntimeError("Recurse calls did not yield all data from ENTSOE - report this error to the maintainer")
-    return _get_cross_border_flow(start, end, area_from, area_to, _recursive=True)
+    query_and_cache_data(start, end, area_from, area_to, engine)
 
+    if not _recurse:
+        raise RuntimeError("Recurse calls did not yield all data from ENTSOE - report this error to the maintainer")
+    return _get_cross_border_flow(start, end, area_from, area_to, _recurse=False)
+
+def cast_cache_to_correct_types(cached_data: pd.DataFrame)-> 'pd.Series[float]':
+    cached_data["time"] = cached_data["time"].dt.tz_localize("Europe/Oslo").dt.tz_convert("UTC").astype(pd.DatetimeTZDtype('ns', 'UTC'))
+    cached_data['flow'] = cached_data['flow'].astype(pd.Float64Dtype())
+    cached_retval = cached_data.set_index("time")["flow"]
+    cached_retval.index.rename('time', True)
+    with suppress(ValueError):
+        cached_retval.index.freq = pd.infer_freq(cached_retval.index)
+    return cached_retval
+
+def query_and_cache_data(start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area, engine: Engine):
+    data = _get_cross_border_flow_from_api(start, end, area_from, area_to)
+    other_data = _get_cross_border_flow_from_api(start, end, area_to, area_from)
+
+    cache_flow_data(engine, data - other_data, area_from, area_to)
+    cache_flow_data(engine, other_data - data, area_to, area_from)
 
 def cache_flow_data(engine: Engine, data: pd.Series, area_from: Area, area_to: Area):
     frame = pd.DataFrame({"flow": data})
     frame["area_from"] = area_from.value
     frame["area_to"] = area_to.value
     frame = frame.rename_axis("time").reset_index()
-    frame["time"] = frame["time"].dt.tz_convert("UTC")
     frame["ROW_KEY"] = frame["area_from"] + "_" + frame["area_to"] + "_" + frame["time"].astype(str)
     store_df_in_table("ENTSOE", frame, engine)
 
 
 def _get_cross_border_flow_from_api(
     start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area
-) -> pd.Series:
+) -> 'pd.Series[float]':
     logging.getLogger().info(f"Fetching ENTSOE data from {start} to {end} for {area_from} to {area_to}")
 
     client = get_entsoe_client()
@@ -284,17 +299,20 @@ def _get_cross_border_flow_from_api(
         start=start,
         end=end,
     )
+    crossborder_flow.index = crossborder_flow.index.tz_convert('UTC')
+    crossborder_flow = crossborder_flow.astype(pd.Float64Dtype())
 
     return crossborder_flow
 
 
 def get_cross_border_flow(start: date, end: date, area_from: Area, area_to: Area) -> pd.Series:
     """Gets the cross border flow from in a date-range for an interchange from/to an Area.
-    `**NOTE**` the flows are all > 0, meaning you need to retrieve both directions to get expected data
+    `**NOTE**` the flows are all > 0, meaning you need to retrieve both directions to get expected data.
+    Timestamps are converted to UTC before querying the API. Returned time-data is in UTC.
 
     Args:
-        start (date): stat of the retrieval range
-        end (date): end of the retrieval range
+        start (date): start of the retrieval range, in local time
+        end (date): end of the retrieval range, in local time
         area_from (Area): from area
         area_to (Area): to area
 
@@ -327,6 +345,15 @@ def fetch_observed_entsoe_data_for_cnec(
     Returns:
         DataFrame: Frame with  time as index and one column `flow`
     """
+
+    enstoe_from_area, entsoe_to_area = lookup_entsoe_areas_from_bz(from_area, to_area)
+    cross_border_flow = get_cross_border_flow(start_date, end_date, enstoe_from_area, entsoe_to_area)
+
+    return_frame = cross_border_flow.to_frame("flow")
+    return_frame = return_frame.sort_index()
+    return return_frame
+
+def lookup_entsoe_areas_from_bz(from_area: BiddingZonesEnum, to_area: BiddingZonesEnum) -> tuple[Area, Area]:
     if from_area in ENSTOE_BIDDING_ZONE_MAP:
         enstoe_from_area = ENSTOE_BIDDING_ZONE_MAP[from_area]
     elif from_area in ENTSOE_HVDC_ZONE_MAP:
@@ -342,10 +369,4 @@ def fetch_observed_entsoe_data_for_cnec(
             entsoe_to_area = ENTSOE_HVDC_ZONE_MAP[to_area][0]
     else:
         raise ValueError(f"No mapping for {to_area}")
-
-    df0 = get_cross_border_flow(start_date, end_date, enstoe_from_area, entsoe_to_area)
-    df1 = get_cross_border_flow(start_date, end_date, entsoe_to_area, enstoe_from_area)
-
-    df = df0 - df1
-
-    return df.to_frame("flow")
+    return enstoe_from_area,entsoe_to_area

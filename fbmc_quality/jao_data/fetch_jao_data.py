@@ -186,7 +186,7 @@ def fetch_jao_dataframe_timeseries(from_time: timedata, to_time: timedata) -> Da
 
     all_results = None
     cached_results, new_start = try_jao_cache_before_async(from_time, to_time)
-
+    
     if len(new_start) > 0:
         logger.info(f"JAO: Hit cache - but need extra data from {len(new_start)}")
         try:

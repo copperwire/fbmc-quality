@@ -1,7 +1,12 @@
 from pandas.testing import assert_series_equal
+import os
+from pathlib import Path
 
 
-def test_entsoe_conservation():
+def test_entsoe_conservation(tmp_path):
+    # HACK: to override the setting of the DB_PATH this has to be inserted into env before the imports
+    os.environ["DB_PATH"] = str(Path(tmp_path) / "test_data.duckdb")
+    
     from contextlib import suppress
     from datetime import datetime
 
@@ -11,6 +16,7 @@ def test_entsoe_conservation():
     from fbmc_quality.enums.bidding_zones import BiddingZonesEnum
     from fbmc_quality.exceptions.fbmc_exceptions import ENTSOELookupException
     from fbmc_quality.jao_data.analyse_jao_data import BIDDING_ZONE_CNEC_MAP
+
 
     test_period = (datetime(2023, 10, 1), datetime(2023, 10, 2))
     start = test_period[0]

@@ -4,13 +4,14 @@ import logging
 import uuid
 import warnings
 from datetime import date, datetime, timedelta
-from typing import Iterable, TypeVar
+from typing import Hashable, Iterable, TypeVar
 
 import aiohttp
 import duckdb
 import pandas as pd
 import pytz
 from pandera.typing import DataFrame
+from pytz import AmbiguousTimeError
 from sqlalchemy import Engine, create_engine
 
 from fbmc_quality.dataframe_schemas.cache_db import DB_PATH
@@ -146,12 +147,15 @@ def try_jao_cache_before_async(
 
 
 def formatting_cache_to_retval(cached_data: pd.DataFrame) -> pd.DataFrame:
-    cached_data[JaoData.time] = (
-        cached_data[JaoData.time]
-        .dt.tz_localize("Europe/Oslo")
-        .dt.tz_convert("UTC")
-        .astype(pd.DatetimeTZDtype("ns", "UTC"))
-    )
+    try:
+        cached_data[JaoData.time] = (
+            cached_data[JaoData.time]
+            .dt.tz_localize("Europe/Oslo")
+            .dt.tz_convert("UTC")
+            .astype(pd.DatetimeTZDtype("ns", "UTC"))
+        )
+    except AmbiguousTimeError:
+        cached_data = correct_for_dst(cached_data)
     cached_data[JaoData.cnec_id] = cached_data[JaoData.cnec_id].astype(pd.StringDtype())
     cached_data[JaoData.dateTimeUtc] = (
         cached_data[JaoData.dateTimeUtc].dt.tz_localize("UTC").astype(pd.DatetimeTZDtype("ns", "UTC"))
@@ -160,6 +164,18 @@ def formatting_cache_to_retval(cached_data: pd.DataFrame) -> pd.DataFrame:
     cached_data = cached_data.set_index([JaoData.cnec_id, JaoData.time])
     cached_data = cached_data.sort_index(level=JaoData.time)
     return cached_data
+
+
+def correct_for_dst(frame: pd.DataFrame):
+    new_time_for_cnec: dict[Hashable, pd.Series] = {}
+    for cnec_id, subframe in frame.groupby(JaoData.cnec_id):
+        new_time_for_cnec[cnec_id] = subframe[JaoData.time].dt.tz_localize("Europe/Oslo", ambiguous="infer")
+
+    for cnec_id, data in new_time_for_cnec.items():
+        frame.loc[frame[JaoData.cnec_id] == cnec_id, JaoData.time] = data
+
+    frame[JaoData.time] = frame[JaoData.time].dt.tz_convert("UTC").astype(pd.DatetimeTZDtype("ns", "UTC"))
+    return frame
 
 
 def fetch_jao_dataframe_timeseries(from_time: timedata, to_time: timedata) -> DataFrame[JaoData] | None:
@@ -186,7 +202,7 @@ def fetch_jao_dataframe_timeseries(from_time: timedata, to_time: timedata) -> Da
 
     all_results = None
     cached_results, new_start = try_jao_cache_before_async(from_time, to_time)
-    
+
     if len(new_start) > 0:
         logger.info(f"JAO: Hit cache - but need extra data from {len(new_start)}")
         try:

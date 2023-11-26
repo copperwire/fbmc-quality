@@ -1,8 +1,6 @@
-import re
 from datetime import date, datetime
 from typing import Callable
 
-import Levenshtein
 import numpy as np
 import pandas as pd
 from pandera.typing import DataFrame
@@ -11,10 +9,9 @@ from fbmc_quality.dataframe_schemas import BiddingZones, JaoData, NetPosition
 
 # from bdl_data.fetch_bdl_data import get_bdl_data_for_cnec
 from fbmc_quality.entsoe_data.fetch_entsoe_data import (
+    fetch_entsoe_data_from_cnecname,
     fetch_net_position_from_crossborder_flows,
-    fetch_observed_entsoe_data_for_cnec,
 )
-from fbmc_quality.enums.bidding_zones import BiddingZonesEnum
 from fbmc_quality.jao_data.analyse_jao_data import compute_basecase_net_pos, get_cnec_id_from_name
 from fbmc_quality.jao_data.fetch_jao_data import fetch_jao_dataframe_timeseries
 from fbmc_quality.linearisation_analysis.compute_functions import compute_linearised_flow
@@ -65,13 +62,12 @@ def transform_delta_np_and_ptdfs_to_numpy(
     return merged_data.to_numpy()
 
 
-def load_jao_data_basecase_nps_and_observed_nps(start_in: date | datetime , end_in: date | datetime) -> JaoDataAndNPS:
-
+def load_jao_data_basecase_nps_and_observed_nps(start_in: date | datetime, end_in: date | datetime) -> JaoDataAndNPS:
     if isinstance(start_in, datetime):
         start = start_in
     else:
         start = datetime(start_in.year, start_in.month, start_in.day)
-    
+
     if isinstance(end_in, datetime):
         end = end_in
     else:
@@ -143,15 +139,6 @@ def load_data_for_internal_cnec(
     )
 
 
-def _get_entsoe_data_for_cnec(start: date, end: date, cnecName: str) -> pd.DataFrame:
-    bidding_zone, to_zone = get_from_to_bz_from_name(cnecName)
-    if bidding_zone is None or to_zone is None:
-        raise ValueError(f"No from/to zone found for {cnecName}")
-
-    observed_flow = fetch_observed_entsoe_data_for_cnec(bidding_zone, to_zone, start, end)
-    return observed_flow
-
-
 def load_data_for_corridor_cnec(cnecName: str, jaodata_and_net_positions: JaoDataAndNPS) -> CnecDataAndNPS | None:
     """Loads data for a given cnec from its name as it appears in the  JAO API
 
@@ -165,40 +152,4 @@ def load_data_for_corridor_cnec(cnecName: str, jaodata_and_net_positions: JaoDat
     Returns:
         CnecDataAndNPS | None: CNEC data if any is found
     """
-    return load_data_for_internal_cnec(cnecName, _get_entsoe_data_for_cnec, jaodata_and_net_positions)
-
-
-def get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZonesEnum] | tuple[None, None]:
-    bz1, bz2 = regex_get_from_to_bz_from_name(cnecName)
-    if bz1 is None or bz2 is None:
-        return substring_get_from_to_bz_from_name(cnecName)
-    else:
-        return bz1, bz2
-
-
-def substring_get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZonesEnum] | tuple[None, None]:
-    for bz_from in BiddingZonesEnum:
-        for bz_to in BiddingZonesEnum:
-            if bz_from == bz_to:
-                continue
-
-            if bz_from.value in cnecName and bz_to.value in cnecName:
-                dist1 = Levenshtein.distance(f"{bz_from.value} {bz_to.value}", cnecName)
-                dist2 = Levenshtein.distance(f"{bz_from.value} {bz_to.value}", cnecName)
-                if dist1 < dist2:
-                    return bz_from, bz_to
-                else:
-                    return bz_from, bz_to
-    return (None, None)
-
-
-def regex_get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZonesEnum] | tuple[None, None]:
-    for bz_from in BiddingZonesEnum:
-        for bz_to in BiddingZonesEnum:
-            if bz_from == bz_to:
-                continue
-
-            match = re.search(rf"{bz_from.value}.+{bz_to.value}", cnecName)
-            if match is not None:
-                return bz_from, bz_to
-    return (None, None)
+    return load_data_for_internal_cnec(cnecName, fetch_entsoe_data_from_cnecname, jaodata_and_net_positions)

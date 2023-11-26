@@ -1,10 +1,12 @@
 import logging
 import os
+import re
 from contextlib import suppress
 from datetime import date, datetime, timedelta
-from typing import Sequence
+from typing import Sequence, TypeVar
 
 import duckdb
+import Levenshtein
 import numpy as np
 import pandas as pd
 from entsoe import Area, EntsoePandasClient
@@ -16,8 +18,11 @@ from fbmc_quality.dataframe_schemas.cache_db import DB_PATH
 from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
 from fbmc_quality.dataframe_schemas.schemas import Base, NetPosition
 from fbmc_quality.enums.bidding_zones import BiddingZonesEnum
-from fbmc_quality.jao_data.analyse_jao_data import is_elements_equal_to_target
+from fbmc_quality.exceptions.fbmc_exceptions import ENTSOELookupException
+from fbmc_quality.jao_data.analyse_jao_data import BIDDING_ZONE_CNEC_MAP, is_elements_equal_to_target
 from fbmc_quality.jao_data.get_utc_delta import get_utc_delta
+
+pandasDtypes = TypeVar("pandasDtypes", pd.DataFrame, pd.Series)
 
 ENSTOE_BIDDING_ZONE_MAP: dict[BiddingZonesEnum, Area] = {
     BiddingZonesEnum.NO1: Area.NO_1,
@@ -65,61 +70,40 @@ ENTSOE_HVDC_ZONE_MAP: dict[BiddingZonesEnum, tuple[Area, Area]] = {
 }
 
 
-BIDDINGZONE_CROSS_BORDER_NP_MAP: dict[BiddingZonesEnum, list[BiddingZonesEnum]] = {
-    BiddingZonesEnum.NO1: [
-        BiddingZonesEnum.NO2,
-        BiddingZonesEnum.NO3,
-        BiddingZonesEnum.NO5,
-        BiddingZonesEnum.SE3,
-    ],
-    BiddingZonesEnum.NO2: [
-        BiddingZonesEnum.NO2_ND,
-        BiddingZonesEnum.NO2_NK,
-        BiddingZonesEnum.DK1,
-        BiddingZonesEnum.NO5,
-        BiddingZonesEnum.NO1,
-    ],
-    BiddingZonesEnum.NO3: [
-        BiddingZonesEnum.NO1,
-        BiddingZonesEnum.NO5,
-        BiddingZonesEnum.NO4,
-        BiddingZonesEnum.SE2,
-    ],
-    BiddingZonesEnum.NO4: [
-        BiddingZonesEnum.SE1,
-        BiddingZonesEnum.FI,
-        BiddingZonesEnum.NO3,
-        BiddingZonesEnum.SE2,
-    ],
-    BiddingZonesEnum.NO5: [BiddingZonesEnum.NO1, BiddingZonesEnum.NO3, BiddingZonesEnum.NO2],
-    BiddingZonesEnum.SE1: [BiddingZonesEnum.NO4, BiddingZonesEnum.SE2, BiddingZonesEnum.FI],
-    BiddingZonesEnum.SE2: [
-        BiddingZonesEnum.SE1,
-        BiddingZonesEnum.SE3,
-        BiddingZonesEnum.NO3,
-        BiddingZonesEnum.NO4,
-    ],
-    BiddingZonesEnum.SE3: [
-        BiddingZonesEnum.NO1,
-        BiddingZonesEnum.DK1,
-        BiddingZonesEnum.FI,
-        BiddingZonesEnum.SE4,
-        BiddingZonesEnum.SE2,
-    ],
-    BiddingZonesEnum.SE4: [
-        BiddingZonesEnum.SE3,
-        BiddingZonesEnum.SE4_SP,
-        BiddingZonesEnum.SE4_NB,
-        BiddingZonesEnum.SE4_BC,
-        BiddingZonesEnum.DK2,
-    ],
-    BiddingZonesEnum.FI: [
-        BiddingZonesEnum.NO4,
-        BiddingZonesEnum.SE1,
-        BiddingZonesEnum.SE3,
-        BiddingZonesEnum.FI_EL,
-    ],
-}
+def get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZonesEnum] | tuple[None, None]:
+    bz1, bz2 = regex_get_from_to_bz_from_name(cnecName)
+    if bz1 is None or bz2 is None:
+        return substring_get_from_to_bz_from_name(cnecName)
+    else:
+        return bz1, bz2
+
+
+def substring_get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZonesEnum] | tuple[None, None]:
+    for bz_from in BiddingZonesEnum:
+        for bz_to in BiddingZonesEnum:
+            if bz_from == bz_to:
+                continue
+
+            if bz_from.value in cnecName and bz_to.value in cnecName:
+                dist1 = Levenshtein.distance(f"{bz_from.value} {bz_to.value}", cnecName)
+                dist2 = Levenshtein.distance(f"{bz_from.value} {bz_to.value}", cnecName)
+                if dist1 < dist2:
+                    return bz_from, bz_to
+                else:
+                    return bz_from, bz_to
+    return (None, None)
+
+
+def regex_get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZonesEnum] | tuple[None, None]:
+    for bz_from in BiddingZonesEnum:
+        for bz_to in BiddingZonesEnum:
+            if bz_from == bz_to:
+                continue
+
+            match = re.search(rf"{bz_from.value}.+{bz_to.value}", cnecName)
+            if match is not None:
+                return bz_from, bz_to
+    return (None, None)
 
 
 def convert_date_to_utc_pandas(date_obj: date | datetime) -> pd.Timestamp:
@@ -169,7 +153,6 @@ def fetch_net_position_from_crossborder_flows(
     end_pd = convert_date_to_utc_pandas(end)
 
     retval = _get_net_position_from_crossborder_flows(start_pd, end_pd, bidding_zones)
-    retval = pd.concat(retval, axis=1)
 
     if check_for_zero_zum:
         filter_list = is_elements_equal_to_target(retval.sum(axis=1), threshold=1)
@@ -182,48 +165,30 @@ def _get_net_position_from_crossborder_flows(
     start: pd.Timestamp,
     end: pd.Timestamp,
     bidding_zones: list[BiddingZonesEnum] | BiddingZonesEnum | None = None,
-) -> list[DataFrame[NetPosition]]:
+) -> DataFrame[NetPosition]:
     if bidding_zones is None:
         bidding_zones = [bz for bz in BiddingZonesEnum]
+    elif isinstance(bidding_zones, BiddingZonesEnum):
+        bidding_zones = [bidding_zones]
 
     df_list = []
-
     for bidding_zone in bidding_zones:
-        if bidding_zone in ENSTOE_BIDDING_ZONE_MAP:
-            area_from = ENSTOE_BIDDING_ZONE_MAP[bidding_zone]
-            exchange_areas = ENTSOE_CROSS_BORDER_NP_MAP[area_from]
-        elif bidding_zone in ENTSOE_HVDC_ZONE_MAP:
-            area_from = ENTSOE_HVDC_ZONE_MAP[bidding_zone][0]
-            exchange_areas: list[Area] = [ENTSOE_HVDC_ZONE_MAP[bidding_zone][1]]
-        else:
-            continue
+        data: list[pd.DataFrame] = []
+        with suppress(KeyError, ENTSOELookupException):
+            for bidding_zone_to in BIDDING_ZONE_CNEC_MAP[bidding_zone]:
+                data.append(fetch_entsoe_data_from_bidding_zones(start, end, bidding_zone, bidding_zone_to[1]))
 
-        data: list[pd.Series] = []
-        other_direction_data: list[pd.Series] = []
+        if data:
+            corridor_flows = pd.concat(data, axis=1)
+            df_list.append(corridor_flows.sum(axis=1).rename(bidding_zone.value))
 
-        for area_to in exchange_areas:
-            series_onedir = _get_cross_border_flow(start, end, area_from, area_to)
-            data.append(series_onedir)
-            series_otherdir = _get_cross_border_flow(start, end, area_to, area_from)
-            other_direction_data.append(series_otherdir)
-
-        resample_to_hour_and_replace(data)
-        resample_to_hour_and_replace(other_direction_data)
-
-        left_data = pd.concat(data, axis=1).sum(axis=1)
-        right_data = pd.concat(other_direction_data, axis=1).sum(axis=1)
-
-        _df_bz = left_data - right_data
-        _df_bz.name = bidding_zone.value
-        df_list.append(_df_bz)  # , bidding_zone)
-
-    return df_list
+    return pd.concat(df_list, axis=1)
 
 
-def resample_to_hour_and_replace(data):
-    for i in range(len(data)):
-        if data[i].index.freqstr != "H":
-            data[i] = data[i].resample("H", label="left").mean()
+def resample_to_hour_and_replace(data: pandasDtypes) -> pandasDtypes:
+    if data.index.freqstr != "H":
+        data = data.resample("H", label="left").mean()
+    return data
 
 
 def _get_cross_border_flow(
@@ -277,6 +242,9 @@ def query_and_cache_data(start: pd.Timestamp, end: pd.Timestamp, area_from: Area
     data = _get_cross_border_flow_from_api(start, end, area_from, area_to)
     other_data = _get_cross_border_flow_from_api(start, end, area_to, area_from)
 
+    data = resample_to_hour_and_replace(data)
+    other_data = resample_to_hour_and_replace(other_data)
+
     cache_flow_data(engine, data - other_data, area_from, area_to)
     cache_flow_data(engine, other_data - data, area_to, area_from)
 
@@ -310,7 +278,6 @@ def _get_cross_border_flow_from_api(
 
 def get_cross_border_flow(start: date, end: date, area_from: Area, area_to: Area) -> pd.Series:
     """Gets the cross border flow from in a date-range for an interchange from/to an Area.
-    `**NOTE**` the flows are all > 0, meaning you need to retrieve both directions to get expected data.
     Timestamps are converted to UTC before querying the API. Returned time-data is in UTC.
 
     Args:
@@ -328,12 +295,12 @@ def get_cross_border_flow(start: date, end: date, area_from: Area, area_to: Area
     return _get_cross_border_flow(start_pd, end_pd, area_from, area_to)
 
 
-def fetch_observed_entsoe_data_for_cnec(
-    from_area: BiddingZonesEnum,
-    to_area: BiddingZonesEnum,
+def fetch_entsoe_data_from_bidding_zones(
     start_date: date,
     end_date: date,
-) -> DataFrame:
+    from_area: BiddingZonesEnum,
+    to_area: BiddingZonesEnum,
+) -> pd.DataFrame:
     """Calculates the flow on a border CNEC between two areas for a time period
 
     Args:
@@ -343,7 +310,7 @@ def fetch_observed_entsoe_data_for_cnec(
         end_date (date): enddate to pull data to
 
     Raises:
-        ValueError: Mapping error if `ENTSOE_BIDDING_ZONE_MAP` does not contain the from/to zone.
+        ENTSOELookupException: Mapping error if `ENTSOE_BIDDING_ZONE_MAP` does not contain the from/to zone.
 
     Returns:
         DataFrame: Frame with  time as index and one column `flow`
@@ -357,13 +324,40 @@ def fetch_observed_entsoe_data_for_cnec(
     return return_frame
 
 
+def fetch_entsoe_data_from_cnecname(
+    start_date: date,
+    end_date: date,
+    cnecName: str,
+) -> pd.DataFrame:
+    """Calculates the flow on a border CNEC between two areas for a time period
+    Wrapper around fetch_entsoe_data_from_bidding_zones
+
+    Args:
+        start_date (date): start date to pull data from
+        end_date (date): enddate to pull data to
+        cnecName (str): name of cnec to pull data for
+
+    Raises:
+        ENTSOELookupException: Mapping error if `ENTSOE_BIDDING_ZONE_MAP` does not contain the from/to zone.
+
+    Returns:
+        DataFrame: Frame with  time as index and one column `flow`
+    """
+
+    bidding_zone, to_zone = get_from_to_bz_from_name(cnecName)
+    if bidding_zone is None or to_zone is None:
+        raise ENTSOELookupException(f"No from/to zone found for {cnecName}")
+
+    return fetch_entsoe_data_from_bidding_zones(start_date, end_date, bidding_zone, to_zone)
+
+
 def lookup_entsoe_areas_from_bz(from_area: BiddingZonesEnum, to_area: BiddingZonesEnum) -> tuple[Area, Area]:
     if from_area in ENSTOE_BIDDING_ZONE_MAP:
         enstoe_from_area = ENSTOE_BIDDING_ZONE_MAP[from_area]
     elif from_area in ENTSOE_HVDC_ZONE_MAP:
         enstoe_from_area = ENTSOE_HVDC_ZONE_MAP[from_area][0]
     else:
-        raise ValueError(f"No mapping for {from_area}")
+        raise ENTSOELookupException(f"No mapping for {from_area}")
 
     if to_area in ENSTOE_BIDDING_ZONE_MAP:
         entsoe_to_area = ENSTOE_BIDDING_ZONE_MAP[to_area]
@@ -372,5 +366,5 @@ def lookup_entsoe_areas_from_bz(from_area: BiddingZonesEnum, to_area: BiddingZon
         if entsoe_to_area == enstoe_from_area:
             entsoe_to_area = ENTSOE_HVDC_ZONE_MAP[to_area][0]
     else:
-        raise ValueError(f"No mapping for {to_area}")
+        raise ENTSOELookupException(f"No mapping for {to_area}")
     return enstoe_from_area, entsoe_to_area

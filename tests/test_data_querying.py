@@ -38,13 +38,15 @@ def test_entsoe_data(tmp_path):
     from fbmc_quality.dataframe_schemas.cache_db import DB_PATH
     from fbmc_quality.dataframe_schemas.schemas import Base
     from fbmc_quality.entsoe_data.fetch_entsoe_data import (
-        BIDDINGZONE_CROSS_BORDER_NP_MAP,
         _get_cross_border_flow_from_api,
         convert_date_to_utc_pandas,
-        fetch_observed_entsoe_data_for_cnec,
+        fetch_entsoe_data_from_bidding_zones,
         lookup_entsoe_areas_from_bz,
         query_and_cache_data,
+        resample_to_hour_and_replace,
     )
+    from fbmc_quality.exceptions.fbmc_exceptions import ENTSOELookupException
+    from fbmc_quality.jao_data.analyse_jao_data import BIDDING_ZONE_CNEC_MAP
 
     from_time = datetime(2023, 4, 1, 0)
     to_time = datetime(2023, 4, 1, 4)
@@ -54,11 +56,11 @@ def test_entsoe_data(tmp_path):
     api_key = os.getenv("ENTSOE_API_KEY")
     assert api_key is not None
 
-    for from_zone, to_zones in BIDDINGZONE_CROSS_BORDER_NP_MAP.items():
-        for to_zone in to_zones:
+    for from_zone, to_zones_and_cnec in BIDDING_ZONE_CNEC_MAP.items():
+        for _, to_zone in to_zones_and_cnec:
             try:
                 from_area, to_area = lookup_entsoe_areas_from_bz(from_zone, to_zone)
-            except ValueError:
+            except ENTSOELookupException:
                 continue
 
             oneway_flow = _get_cross_border_flow_from_api(
@@ -71,10 +73,10 @@ def test_entsoe_data(tmp_path):
             query_and_cache_data(
                 convert_date_to_utc_pandas(from_time), convert_date_to_utc_pandas(to_time), from_area, to_area, engine
             )
-            flow = (oneway_flow - otherway_flow).to_frame("flow")
+            flow = resample_to_hour_and_replace((oneway_flow - otherway_flow).to_frame("flow"))
             flow.index.rename("time", True)
 
             os.environ["ENTSOE_API_KEY"] = ""
-            cached_flow = fetch_observed_entsoe_data_for_cnec(from_zone, to_zone, from_time, to_time)
+            cached_flow = fetch_entsoe_data_from_bidding_zones(from_time, to_time, from_zone, to_zone)
             assert_frame_equal(flow, cached_flow)
             os.environ["ENTSOE_API_KEY"] = api_key

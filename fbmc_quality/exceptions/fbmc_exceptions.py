@@ -1,0 +1,2 @@
+class ENTSOELookupException(Exception):
+    pass

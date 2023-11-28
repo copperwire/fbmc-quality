@@ -12,6 +12,7 @@ from fbmc_quality.entsoe_data.fetch_entsoe_data import (
     fetch_entsoe_data_from_cnecname,
     fetch_net_position_from_crossborder_flows,
 )
+from fbmc_quality.exceptions.fbmc_exceptions import NoInferrableFrequency
 from fbmc_quality.jao_data.analyse_jao_data import compute_basecase_net_pos, get_cnec_id_from_name
 from fbmc_quality.jao_data.fetch_jao_data import fetch_jao_dataframe_timeseries
 from fbmc_quality.linearisation_analysis.compute_functions import compute_linearised_flow
@@ -88,7 +89,7 @@ def load_jao_data_basecase_nps_and_observed_nps(start_in: date | datetime, end_i
 
 def load_data_for_internal_cnec(
     cnecName: str,
-    fetch_cnec_data: Callable[[date, date, str], pd.DataFrame | None],
+    fetch_cnec_data: Callable[[datetime | pd.Timestamp, datetime | pd.Timestamp, str], pd.DataFrame | None],
     jaodata_and_net_positions: JaoDataAndNPS,
 ) -> CnecDataAndNPS | None:
     """Loads data for a given cnec from its name as it appears in the JAO API.
@@ -105,8 +106,14 @@ def load_data_for_internal_cnec(
     cnec_id = get_cnec_id_from_name(cnecName, jaodata_and_net_positions.jaoData)
     cnec_ds = jaodata_and_net_positions.jaoData.xs(cnec_id, level=JaoData.cnec_id)
 
-    end = jaodata_and_net_positions.jaoData.index.get_level_values(JaoData.time).max().to_pydatetime()
-    start = jaodata_and_net_positions.jaoData.index.get_level_values(JaoData.time).min().to_pydatetime()
+    times: "pd.DatetimeIndex" = jaodata_and_net_positions.jaoData.index.get_level_values("time")
+    freq = pd.infer_freq(times.unique().sort_values())
+    if freq is None:
+        raise NoInferrableFrequency(f"Cant infer frequency from {times.unique().sort_values()}")
+
+    period_dt = pd.to_timedelta("1" + freq)
+    end = (times.max() + period_dt).to_pydatetime()
+    start = times.min().to_pydatetime()
 
     observed_flow = fetch_cnec_data(start, end, cnecName)
     if observed_flow is None or observed_flow.empty or cnec_ds.empty:

@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from contextlib import suppress
-from datetime import date, datetime, timedelta
+from datetime import datetime
 from typing import Sequence, TypeVar
 
 import duckdb
@@ -17,10 +17,10 @@ from sqlalchemy import Engine, create_engine
 from fbmc_quality.dataframe_schemas.cache_db import DB_PATH
 from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
 from fbmc_quality.dataframe_schemas.schemas import Base, NetPosition
-from fbmc_quality.enums.bidding_zones import BiddingZonesEnum
+from fbmc_quality.datetime_handlers.handle_timezones import convert_date_to_utc_pandas
+from fbmc_quality.enums.bidding_zones import ALT_NAME_MAP, BIDDING_ZONE_CNEC_MAP, AltBiddingZonesEnum, BiddingZonesEnum
 from fbmc_quality.exceptions.fbmc_exceptions import ENTSOELookupException
-from fbmc_quality.jao_data.analyse_jao_data import BIDDING_ZONE_CNEC_MAP, is_elements_equal_to_target
-from fbmc_quality.jao_data.get_utc_delta import get_utc_delta
+from fbmc_quality.jao_data.analyse_jao_data import is_elements_equal_to_target
 
 pandasDtypes = TypeVar("pandasDtypes", pd.DataFrame, pd.Series)
 
@@ -36,7 +36,7 @@ ENSTOE_BIDDING_ZONE_MAP: dict[BiddingZonesEnum, Area] = {
     BiddingZonesEnum.SE4: Area.SE_4,
     BiddingZonesEnum.FI: Area.FI,
     BiddingZonesEnum.DK2: Area.DK_2,
-    # BiddingZones.DK1: Area.DK_1,
+    BiddingZonesEnum.DK1: Area.DK_1,
 }
 
 ENTSOE_CROSS_BORDER_NP_MAP: dict[Area, list[Area]] = {
@@ -51,7 +51,7 @@ ENTSOE_CROSS_BORDER_NP_MAP: dict[Area, list[Area]] = {
     Area.SE_4: [Area.SE_3, Area.PL, Area.LT, Area.DE_LU, Area.DK_2],
     Area.FI: [Area.NO_4, Area.SE_1, Area.SE_3, Area.EE],
     Area.DK_2: [Area.SE_4, Area.DK_1, Area.DE_LU],
-    # Area.DK_1: [Area.NO_2, Area.DK_2, Area.SE_3, Area.DE_LU],
+    Area.DK_1: [Area.NO_2, Area.DK_2, Area.SE_3, Area.DE_LU],
 }
 
 ENTSOE_HVDC_ZONE_MAP: dict[BiddingZonesEnum, tuple[Area, Area]] = {
@@ -67,6 +67,13 @@ ENTSOE_HVDC_ZONE_MAP: dict[BiddingZonesEnum, tuple[Area, Area]] = {
     BiddingZonesEnum.FI_EL: (Area.EE, Area.FI),
     BiddingZonesEnum.DK2_SB: (Area.DK_1, Area.DK_2),
     BiddingZonesEnum.DK2_KO: (Area.DE_LU, Area.DK_2),
+    BiddingZonesEnum.DK1_SB: (Area.DK_2, Area.DK_1),
+    BiddingZonesEnum.DK1_CO: (Area.NL, Area.DK_1),
+    BiddingZonesEnum.DK1_DE: (Area.DE_LU, Area.DK_1),
+    BiddingZonesEnum.DK1_KS: (Area.SE_3, Area.DK_1),
+    BiddingZonesEnum.DK1_SK: (Area.NO_2, Area.DK_1),
+    BiddingZonesEnum.DK1_ST: (Area.DK_2, Area.DK_1),
+    BiddingZonesEnum.DK2_ST: (Area.DK_1, Area.DK_2),
 }
 
 
@@ -79,40 +86,43 @@ def get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZo
 
 
 def substring_get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZonesEnum] | tuple[None, None]:
-    for bz_from in BiddingZonesEnum:
-        for bz_to in BiddingZonesEnum:
+    all_bidding_zones = [bz for bz in BiddingZonesEnum] + [bz for bz in AltBiddingZonesEnum]
+
+    for bz_from in all_bidding_zones:
+        for bz_to in all_bidding_zones:
             if bz_from == bz_to:
                 continue
 
             if bz_from.value in cnecName and bz_to.value in cnecName:
                 dist1 = Levenshtein.distance(f"{bz_from.value} {bz_to.value}", cnecName)
-                dist2 = Levenshtein.distance(f"{bz_from.value} {bz_to.value}", cnecName)
+                dist2 = Levenshtein.distance(f"{bz_to.value} {bz_from.value}", cnecName)
                 if dist1 < dist2:
-                    return bz_from, bz_to
+                    return (
+                        BiddingZonesEnum(bz_from) if bz_from not in AltBiddingZonesEnum else ALT_NAME_MAP[bz_from],
+                        BiddingZonesEnum(bz_to) if bz_to not in AltBiddingZonesEnum else ALT_NAME_MAP[bz_to],
+                    )
                 else:
-                    return bz_from, bz_to
+                    return (
+                        BiddingZonesEnum(bz_to) if bz_to not in AltBiddingZonesEnum else ALT_NAME_MAP[bz_to],
+                        BiddingZonesEnum(bz_from) if bz_from not in AltBiddingZonesEnum else ALT_NAME_MAP[bz_from],
+                    )
     return (None, None)
 
 
 def regex_get_from_to_bz_from_name(cnecName: str) -> tuple[BiddingZonesEnum, BiddingZonesEnum] | tuple[None, None]:
-    for bz_from in BiddingZonesEnum:
-        for bz_to in BiddingZonesEnum:
+    all_bidding_zones = [bz for bz in BiddingZonesEnum] + [bz for bz in AltBiddingZonesEnum]
+    for bz_from in all_bidding_zones:
+        for bz_to in all_bidding_zones:
             if bz_from == bz_to:
                 continue
 
             match = re.search(rf"{bz_from.value}.+{bz_to.value}", cnecName)
             if match is not None:
-                return bz_from, bz_to
+                return (
+                    BiddingZonesEnum(bz_from) if bz_from not in AltBiddingZonesEnum else ALT_NAME_MAP[bz_from],
+                    BiddingZonesEnum(bz_to) if bz_to not in AltBiddingZonesEnum else ALT_NAME_MAP[bz_to],
+                )
     return (None, None)
-
-
-def convert_date_to_utc_pandas(date_obj: date | datetime) -> pd.Timestamp:
-    if isinstance(date_obj, pd.Timestamp):
-        return date_obj
-    if hasattr(date_obj, "tzinfo") and date_obj.tzinfo is not None:
-        return pd.Timestamp(date_obj)
-
-    return pd.Timestamp(date_obj, tz="Europe/Oslo").tz_convert("UTC")
 
 
 def get_entsoe_client(session: Session | None = None) -> EntsoePandasClient:
@@ -124,8 +134,8 @@ def get_entsoe_client(session: Session | None = None) -> EntsoePandasClient:
 
 
 def fetch_net_position_from_crossborder_flows(
-    start: date,
-    end: date,
+    start: datetime | pd.Timestamp,
+    end: datetime | pd.Timestamp,
     bidding_zones: list[BiddingZonesEnum] | BiddingZonesEnum | None = None,
     filter_non_conforming_hours: bool = False,
 ) -> DataFrame[NetPosition] | None:
@@ -133,8 +143,8 @@ def fetch_net_position_from_crossborder_flows(
       for the given `bidding_zones`
 
     Args:
-        start (date | None, optional): Date to start filter the computation on.
-        end (date | None, optional): Date to end filter the computation on.
+        start (datetime | pd.Timestamp): Datetime to start filter the computation on.
+        end (datetime | pd.Timestamp): Datetime to end filter the computation on.
         bidding_zones (BiddingZones | list[BiddingZones] | None, optional):
             Bidding zones to compute the net position for.
             Defaults to None, which will compute for ALL bidding zones.
@@ -182,11 +192,11 @@ def _get_net_position_from_crossborder_flows(
             corridor_flows = pd.concat(data, axis=1)
             df_list.append(corridor_flows.sum(axis=1).rename(bidding_zone.value))
 
-    return pd.concat(df_list, axis=1)
+    return pd.concat(df_list, axis=1)  # type: ignore
 
 
 def resample_to_hour_and_replace(data: pandasDtypes) -> pandasDtypes:
-    if data.index.freqstr != "H":
+    if data.index.freqstr != "H":  # type: ignore
         data = data.resample("H", label="left").mean()
     return data
 
@@ -202,8 +212,8 @@ def _get_cross_border_flow(
     with suppress(duckdb.CatalogException):
         cached_data = connection.sql(
             (
-                "SELECT * FROM ENTSOE WHERE time BETWEEN"
-                f"'{start + timedelta(hours=get_utc_delta(start))}' AND '{end + timedelta(hours=get_utc_delta(start))}'"
+                "SELECT * FROM ENTSOE WHERE time BETWEEN "
+                f"TIMESTAMPTZ '{start.isoformat()}' AND TIMESTAMPTZ '{end.isoformat()}'"
                 f"AND area_from='{area_from.value}' AND area_to='{area_to.value}'"
             )
         ).df()
@@ -212,7 +222,7 @@ def _get_cross_border_flow(
     if cached_data is not None and not cached_data.empty:
         cached_retval = cast_cache_to_correct_types(cached_data)
         cached_retval = cached_retval[(start <= cached_retval.index) & (cached_retval.index < end)]
-        unique_timestamps: Sequence[datetime] = np.sort(cached_retval.index.unique().to_pydatetime())
+        unique_timestamps: Sequence[datetime] = np.sort(cached_retval.index.unique().to_pydatetime())  # type: ignore
         hours = (end - start).total_seconds() // (60 * 60)
         quarters = (end - start).total_seconds() // (60 * 15)
 
@@ -227,14 +237,12 @@ def _get_cross_border_flow(
 
 
 def cast_cache_to_correct_types(cached_data: pd.DataFrame) -> "pd.Series[float]":
-    cached_data["time"] = (
-        cached_data["time"].dt.tz_localize("Europe/Oslo").dt.tz_convert("UTC").astype(pd.DatetimeTZDtype("ns", "UTC"))
-    )
+    cached_data["time"] = cached_data["time"].astype(pd.DatetimeTZDtype("ns", "UTC"))
     cached_data["flow"] = cached_data["flow"].astype(pd.Float64Dtype())
     cached_retval = cached_data.set_index("time")["flow"]
     cached_retval.index.rename("time", True)
     with suppress(ValueError):
-        cached_retval.index.freq = pd.infer_freq(cached_retval.index)
+        cached_retval.index.freq = pd.infer_freq(cached_retval.index)  # type: ignore
     return cached_retval
 
 
@@ -270,13 +278,15 @@ def _get_cross_border_flow_from_api(
         start=start,
         end=end,
     )
-    crossborder_flow.index = crossborder_flow.index.tz_convert("UTC")
+    crossborder_flow.index = crossborder_flow.index.tz_convert("UTC")  # type: ignore
     crossborder_flow = crossborder_flow.astype(pd.Float64Dtype())
 
     return crossborder_flow
 
 
-def get_cross_border_flow(start: date, end: date, area_from: Area, area_to: Area) -> pd.Series:
+def get_cross_border_flow(
+    start: datetime | pd.Timestamp, end: datetime | pd.Timestamp, area_from: Area, area_to: Area
+) -> pd.Series:
     """Gets the cross border flow from in a date-range for an interchange from/to an Area.
     Timestamps are converted to UTC before querying the API. Returned time-data is in UTC.
 
@@ -296,8 +306,8 @@ def get_cross_border_flow(start: date, end: date, area_from: Area, area_to: Area
 
 
 def fetch_entsoe_data_from_bidding_zones(
-    start_date: date,
-    end_date: date,
+    start_date: datetime | pd.Timestamp,
+    end_date: datetime | pd.Timestamp,
     from_area: BiddingZonesEnum,
     to_area: BiddingZonesEnum,
 ) -> pd.DataFrame:
@@ -325,8 +335,8 @@ def fetch_entsoe_data_from_bidding_zones(
 
 
 def fetch_entsoe_data_from_cnecname(
-    start_date: date,
-    end_date: date,
+    start_date: datetime | pd.Timestamp,
+    end_date: datetime | pd.Timestamp,
     cnecName: str,
 ) -> pd.DataFrame:
     """Calculates the flow on a border CNEC between two areas for a time period

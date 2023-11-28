@@ -3,13 +3,12 @@ import hashlib
 import logging
 import uuid
 import warnings
-from datetime import date, datetime, timedelta
+from datetime import datetime
 from typing import Hashable, Iterable, TypeVar
 
 import aiohttp
 import duckdb
 import pandas as pd
-import pytz
 from pandera.typing import DataFrame
 from pytz import AmbiguousTimeError
 from sqlalchemy import Engine, create_engine
@@ -17,14 +16,15 @@ from sqlalchemy import Engine, create_engine
 from fbmc_quality.dataframe_schemas.cache_db import DB_PATH
 from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
 from fbmc_quality.dataframe_schemas.schemas import Base, JaoData
-from fbmc_quality.jao_data.get_utc_delta import get_utc_delta
+from fbmc_quality.datetime_handlers.handle_timezones import convert_date_to_utc_pandas
+from fbmc_quality.exceptions.fbmc_exceptions import WrongTimezoneException
 
 warnings.filterwarnings(
     "ignore",
     message=".*Unverified",
 )
 
-timedata = TypeVar("timedata", date, datetime)
+timedata = TypeVar("timedata", pd.Timestamp, datetime)
 
 
 def create_uuid_from_string(val: str) -> str:
@@ -75,6 +75,7 @@ async def _fetch_jao_dataframe_from_datetime(
 
     df["ROW_KEY"] = df[JaoData.cnec_id] + "_" + df[JaoData.time].astype(str)
     df = df.drop_duplicates(["ROW_KEY"])
+    df = df.drop(["SE3_SWL", "SE4_SWL"], axis=1)
 
     store_df_in_table("JAO", df, engine)
     df = df.set_index([JaoData.cnec_id, JaoData.time]).drop("ROW_KEY", axis=1)
@@ -113,11 +114,15 @@ def try_jao_cache_before_async(
     else:
         dt_to_time = to_time
 
+    for dt in [dt_from_time, dt_to_time]:
+        if dt.tzname() != "UTC":
+            raise WrongTimezoneException(f"Expected UTC timestamps, but got {dt.tzname()}")
+
     loop_time = dt_from_time
     time_range: list[datetime] = []
     while loop_time < (dt_to_time):
-        time_range.append(loop_time.replace(tzinfo=pytz.UTC))
-        loop_time += timedelta(hours=1)
+        time_range.append(loop_time)
+        loop_time += pd.Timedelta(hours=1)
 
     connection = duckdb.connect(str(DB_PATH), read_only=False)
     try:
@@ -125,8 +130,8 @@ def try_jao_cache_before_async(
             connection.sql(
                 (
                     "SELECT * FROM JAO WHERE time BETWEEN"
-                    f"'{from_time + timedelta(hours=get_utc_delta(from_time))}'"
-                    f"AND '{to_time + timedelta(hours=get_utc_delta(from_time))}'"
+                    f" TIMESTAMPTZ '{from_time.isoformat()}'"
+                    f"AND TIMESTAMPTZ '{(to_time + pd.Timedelta(1, unit='minutes')).isoformat()}'"
                 )
             )
             .df()
@@ -148,18 +153,11 @@ def try_jao_cache_before_async(
 
 def formatting_cache_to_retval(cached_data: pd.DataFrame) -> pd.DataFrame:
     try:
-        cached_data[JaoData.time] = (
-            cached_data[JaoData.time]
-            .dt.tz_localize("Europe/Oslo")
-            .dt.tz_convert("UTC")
-            .astype(pd.DatetimeTZDtype("ns", "UTC"))
-        )
+        cached_data[JaoData.time] = cached_data[JaoData.time].astype(pd.DatetimeTZDtype("ns", "UTC"))
     except AmbiguousTimeError:
         cached_data = correct_for_dst(cached_data)
     cached_data[JaoData.cnec_id] = cached_data[JaoData.cnec_id].astype(pd.StringDtype())
-    cached_data[JaoData.dateTimeUtc] = (
-        cached_data[JaoData.dateTimeUtc].dt.tz_localize("UTC").astype(pd.DatetimeTZDtype("ns", "UTC"))
-    )
+    cached_data[JaoData.dateTimeUtc] = cached_data[JaoData.dateTimeUtc].astype(pd.DatetimeTZDtype("ns", "UTC"))
     cached_data[JaoData.contingencies] = cached_data[JaoData.contingencies].astype(pd.StringDtype())
     cached_data = cached_data.set_index([JaoData.cnec_id, JaoData.time])
     cached_data = cached_data.sort_index(level=JaoData.time)
@@ -169,12 +167,12 @@ def formatting_cache_to_retval(cached_data: pd.DataFrame) -> pd.DataFrame:
 def correct_for_dst(frame: pd.DataFrame):
     new_time_for_cnec: dict[Hashable, pd.Series] = {}
     for cnec_id, subframe in frame.groupby(JaoData.cnec_id):
-        new_time_for_cnec[cnec_id] = subframe[JaoData.time].dt.tz_localize("Europe/Oslo", ambiguous="infer")
+        new_time_for_cnec[cnec_id] = subframe[JaoData.time].astype(pd.DatetimeTZDtype("ns", "UTC"))
 
     for cnec_id, data in new_time_for_cnec.items():
         frame.loc[frame[JaoData.cnec_id] == cnec_id, JaoData.time] = data
 
-    frame[JaoData.time] = frame[JaoData.time].dt.tz_convert("UTC").astype(pd.DatetimeTZDtype("ns", "UTC"))
+    frame[JaoData.time] = frame[JaoData.time].astype(pd.DatetimeTZDtype("ns", "UTC"))
     return frame
 
 
@@ -199,17 +197,21 @@ def fetch_jao_dataframe_timeseries(from_time: timedata, to_time: timedata) -> Da
 
     engine = create_engine("duckdb:///" + str(DB_PATH))
     Base.metadata.create_all(engine)
+    from_time_pd = convert_date_to_utc_pandas(from_time)
+    to_time_pd = convert_date_to_utc_pandas(to_time)
 
     all_results = None
-    cached_results, new_start = try_jao_cache_before_async(from_time, to_time)
+    cached_results, timestamps_not_in_cache = try_jao_cache_before_async(from_time_pd, to_time_pd)
 
-    if len(new_start) > 0:
-        logger.info(f"JAO: Hit cache - but need extra data from {len(new_start)}")
+    if len(timestamps_not_in_cache) > 0:
+        logger.info(f"JAO: Hit cache - but need extra data from {len(timestamps_not_in_cache)}")
         try:
-            all_results = asyncio.run(_fetch_jao_dataframe_timeseries(new_start))
+            all_results = asyncio.run(_fetch_jao_dataframe_timeseries(timestamps_not_in_cache))
         except RuntimeError:
             loop = asyncio.get_event_loop()
-            all_results = asyncio.run_coroutine_threadsafe(_fetch_jao_dataframe_timeseries(new_start), loop).result()
+            all_results = asyncio.run_coroutine_threadsafe(
+                _fetch_jao_dataframe_timeseries(timestamps_not_in_cache), loop
+            ).result()
     elif cached_results is not None:
         logger.info("JAO: Full Cache Hit")
         return cached_results

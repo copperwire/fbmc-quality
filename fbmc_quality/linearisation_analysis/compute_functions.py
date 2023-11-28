@@ -2,6 +2,7 @@ import pandas as pd
 from pandera.typing import DataFrame
 
 from fbmc_quality.dataframe_schemas import CnecData, JaoData, NetPosition
+from fbmc_quality.entsoe_data.fetch_entsoe_data import resample_to_hour_and_replace
 
 
 def compute_linearised_flow(
@@ -17,6 +18,8 @@ def compute_linearised_flow(
         pd.Series[pd.Float64Dtype]: linearlised flow
     """
     expected_flow = (cnec_data * target_net_positions).dropna(axis=1, how="all").sum(axis=1) + cnec_data[JaoData.fall]
+    expected_flow.index.rename("time", inplace=True)
+    expected_flow = resample_to_hour_and_replace(expected_flow)
     return expected_flow
 
 

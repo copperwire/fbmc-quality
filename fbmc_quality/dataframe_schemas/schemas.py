@@ -4,7 +4,8 @@ import pandas as pd
 import pandera as pa
 import pydantic
 from pandera.typing import Index, Series
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String
+from sqlalchemy import Boolean, Column, Float, Integer, String
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -13,7 +14,7 @@ Base = declarative_base()
 class CorridorFlowModel(Base):
     __tablename__ = "ENTSOE"
 
-    time = Column(DateTime)  #: Index value
+    time = Column(TIMESTAMP(timezone=True))  #: Index value
     ROW_KEY = Column(String, primary_key=True)
     area_from = Column(String)
     area_to = Column(String)
@@ -26,10 +27,10 @@ class JaoModel(Base):  # type: ignore
     # id = Column(Integer, Sequence("fakemodel_id_sequence"), primary_key=True)
     # name = Column(String)
     cnec_id = Column(String)  #: Index value
-    time = Column(DateTime)  #: Index value
+    time = Column(TIMESTAMP(timezone=True))  #: Index value
     ROW_KEY = Column(String, primary_key=True)
     id = Column(Integer)  #: JAO field value
-    dateTimeUtc = Column(DateTime)  #: JAO field value
+    dateTimeUtc = Column(TIMESTAMP(timezone=True))  #: JAO field value
     tso = Column(String)  #: JAO field value
     cnecName = Column(String)  #: JAO field value
     cnecType = Column(String)  #: JAO field value
@@ -98,12 +99,12 @@ class JaoModel(Base):  # type: ignore
     SE3 = Column(Float)  #: value of bidding zone
     SE3_FS = Column(Float)  #: value of bidding zone
     SE3_KS = Column(Float)  #: value of bidding zone
-    SE3_SWL = Column(Float)  #: value of bidding zone
+    # SE3_SWL = Column(Float)  #: see SWL for SE4
     SE4 = Column(Float)  #: value of bidding zone
     SE4_BC = Column(Float)  #: value of bidding zone
     SE4_NB = Column(Float)  #: value of bidding zone
     SE4_SP = Column(Float)  #: value of bidding zone
-    SE4_SWL = Column(Float)  #: value of bidding zone
+    # SE4_SWL = Column(Float)  #: Not represented since we dont have the HVDC flow
 
 
 class Contingency(pydantic.BaseModel):
@@ -200,12 +201,12 @@ class BiddingZones(pa.DataFrameModel):
     SE3: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
     SE3_FS: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
     SE3_KS: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
-    SE3_SWL: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
+    # SE3_SWL: Series[float] = pa.Field(nullable=True)  #: see other SWL refs
     SE4: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
     SE4_BC: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
     SE4_NB: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
     SE4_SP: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
-    SE4_SWL: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
+    # SE4_SWL: Series[float] = pa.Field(nullable=True)  #: see other SWL refs
 
 
 class JaoData(JaoBase, BiddingZones, CnecMultiindex):

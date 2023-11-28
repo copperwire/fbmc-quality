@@ -1,6 +1,6 @@
 import logging
 from contextlib import suppress
-from datetime import date
+from datetime import datetime
 from warnings import warn
 
 import pandas as pd
@@ -8,6 +8,7 @@ import polars as pl
 from pandera.typing import DataFrame
 
 from fbmc_quality.dataframe_schemas.schemas import JaoData, NetPosition
+from fbmc_quality.enums.bidding_zones import BIDDING_ZONE_CNEC_MAP
 from fbmc_quality.enums.bidding_zones import BiddingZonesEnum as BiddingZonesEnum
 from fbmc_quality.jao_data.fetch_jao_data import fetch_jao_dataframe_timeseries
 
@@ -15,127 +16,6 @@ ALTERNATIVE_NAMES = {
     "NO_NO2_NL->NO2": ["NL->NO2"],
     "NO_NO2_DE->NO2": ["DE->NO2"],
     "NO_NO2_DK1->NO2": ["DK1->NO2"],
-}
-
-
-BIDDING_ZONE_CNEC_MAP = {
-    BiddingZonesEnum.NO1: [
-        "NO2->NO1",
-        "NO3->NO1",
-        "NO5->NO1",
-        "SE3->NO1",
-    ],
-    BiddingZonesEnum.NO2: [
-        "NO_NO2_NL->NO2",
-        "NO_NO2_DE->NO2",
-        "NO_NO2_DK1->NO2",
-        "NO5->NO2",
-        "NO1->NO2",
-    ],
-    BiddingZonesEnum.NO3: [
-        "NO1->NO3",
-        "NO5->NO3",
-        "NO4->NO3",
-        "SE2->NO3",
-    ],
-    BiddingZonesEnum.NO4: [
-        "SE1->NO4",
-        "FI->NO4",
-        "NO3->NO4",
-        "SE2->NO4",
-    ],
-    BiddingZonesEnum.NO5: [
-        "NO1->NO5",
-        "NO3->NO5",
-        "NO2->NO5",
-    ],
-    BiddingZonesEnum.NO2_SK: ["Border_CNEC_NO2-NO2_SK"],
-    BiddingZonesEnum.NO2_NK: ["Border_CNEC_NO2-NO2_NK"],
-    BiddingZonesEnum.NO2_ND: ["Border_CNEC_NO2-NO2_ND"],
-    BiddingZonesEnum.DK1: [
-        "Border_CNEC_DK1_DE-DK1",
-        "Border_CNEC_DK1_KS-DK1",
-        "Border_CNEC_DK1_SB-DK1",
-        "Border_CNEC_DK1_CO-DK1",
-        "Border_CNEC_DK1_SK-DK1",
-    ],
-    BiddingZonesEnum.DK2: ["Border_CNEC_DK2_SB-DK2", "Border_CNEC_DK2_KO-DK2", "Border_CNEC_SE4-DK2"],
-    BiddingZonesEnum.DK1_CO: [
-        "Border_CNEC_DK1-DK1_CO",
-    ],
-    BiddingZonesEnum.DK1_DE: [
-        "Border_CNEC_DK1-DK1_DE",
-    ],
-    BiddingZonesEnum.DK1_KS: [
-        "Border_CNEC_DK1-DK1_KS",
-    ],
-    BiddingZonesEnum.DK1_SB: [
-        "Border_CNEC_DK1-DK1_SB",
-    ],
-    BiddingZonesEnum.DK1_SK: [
-        "Border_CNEC_DK1-DK1_SK",
-    ],
-    BiddingZonesEnum.SE1: [
-        "Border_CNEC_NO4-SE1",
-        "Border_CNEC_SE2-SE1",
-        "Border_CNEC_FI-SE1",
-    ],
-    BiddingZonesEnum.SE2: [
-        "Border_CNEC_SE1-SE2",
-        "Border_CNEC_SE3-SE2",
-        "Border_CNEC_NO4-SE2",
-        "Border_CNEC_NO3-SE2",
-    ],
-    BiddingZonesEnum.SE3: [
-        "Border_CNEC_NO1-SE3",
-        "Border_CNEC_SE3_KS-SE3",
-        "Border_CNEC_SE3_FS-SE3",
-        "Border_CNEC_SE3_SWL-SE3",
-        "Border_CNEC_SE4-SE3",
-        "Border_CNEC_SE2-SE3",
-    ],
-    BiddingZonesEnum.SE3_KS: ["Border_CNEC_SE3-SE3_KS"],
-    BiddingZonesEnum.SE4: [
-        "Border_CNEC_SE3-SE4",
-        "Border_CNEC_SE4_BC-SE4",
-        "Border_CNEC_SE4_SP-SE4",
-        "Border_CNEC_SE4_NB-SE4",
-        "Border_CNEC_SE4_SWL-SE4",
-        "Border_CNEC_DK2-SE4",
-    ],
-    BiddingZonesEnum.SE4_SWL: [
-        "Border_CNEC_SE4-SE4_SWL",
-    ],
-    BiddingZonesEnum.SE4_BC: [
-        "Border_CNEC_SE4-SE4_BC",
-    ],
-    BiddingZonesEnum.SE4_SP: [
-        "Border_CNEC_SE4-SE4_SP",
-    ],
-    BiddingZonesEnum.SE4_NB: [
-        "Border_CNEC_SE4-SE4_NB",
-    ],
-    BiddingZonesEnum.FI: [
-        "Border_CNEC_NO4-FI",
-        "Border_CNEC_SE1-FI",
-        "Border_CNEC_FI_FS-FI",
-        "Border_CNEC_FI_EL-FI",
-    ],
-    BiddingZonesEnum.FI_EL: [
-        "Border_CNEC_FI-FI_EL",
-    ],
-    BiddingZonesEnum.FI_FS: [
-        "Border_CNEC_FI-FI_FS",
-    ],
-    BiddingZonesEnum.SE3_FS: [
-        "Border_CNEC_SE3-SE3_FS",
-    ],
-    BiddingZonesEnum.SE3_KS: [
-        "Border_CNEC_SE3-SE3_KS",
-    ],
-    BiddingZonesEnum.SE3_SWL: [
-        "Border_CNEC_SE3-SE3_SWL",
-    ],
 }
 
 
@@ -190,7 +70,7 @@ def _get_cnec_id_from_polars_frame(cnecName: str, dataset: DataFrame[JaoData]) -
 def get_cross_border_cnec_ids(
     df: DataFrame[JaoData],
     bidding_zones: BiddingZonesEnum | list[BiddingZonesEnum] | None = None,
-    bidding_zone_cnec_map: dict[BiddingZonesEnum, list[str]] = BIDDING_ZONE_CNEC_MAP,
+    bidding_zone_cnec_map: dict[BiddingZonesEnum, list[tuple[str, BiddingZonesEnum]]] = BIDDING_ZONE_CNEC_MAP,
 ) -> dict[BiddingZonesEnum, list[str]]:
     """From a dataset find the cnec ids (a coordinate in the DS) that correspond to the cross border flows.
     The mapping is maintained in BIDDING_ZONE_CNEC_MAP
@@ -227,8 +107,8 @@ def get_cross_border_cnec_ids(
         cnec_mrids = []
         try:
             cnec_names = bidding_zone_cnec_map[bidding_zone]
-            for cnec_name in cnec_names:
-                mrid = get_cnec_id_from_name(cnec_name, df)
+            for cnec_name_and_bz in cnec_names:
+                mrid = get_cnec_id_from_name(cnec_name_and_bz[0], df)
                 cnec_mrids.append(mrid)
         except (ValueError, KeyError):
             continue
@@ -238,8 +118,8 @@ def get_cross_border_cnec_ids(
 
 
 def compute_basecase_net_pos(
-    start: date,
-    end: date,
+    start: datetime | pd.Timestamp,
+    end: datetime | pd.Timestamp,
     bidding_zones: BiddingZonesEnum | list[BiddingZonesEnum] | None = None,
     filter_non_conforming_hours: bool = False,
 ) -> DataFrame[NetPosition] | None:
@@ -256,7 +136,6 @@ def compute_basecase_net_pos(
 
     Returns DataFrame[JaoData]:
     """
-
     check_for_zero_zum = False
     if bidding_zones is None:
         bidding_zones = [bz for bz in BiddingZonesEnum]

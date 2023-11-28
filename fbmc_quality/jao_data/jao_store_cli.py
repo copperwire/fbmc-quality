@@ -19,11 +19,12 @@ def main(
     typer.echo(f"To Date: {to_date}")
 
     current = from_date
+    delta = timedelta(days=2)
 
     while current < to_date:
-        _ = fetch_jao_dataframe_timeseries(current, current + timedelta(days=1))
+        _ = fetch_jao_dataframe_timeseries(current, current + delta)
         typer.echo(f"Stored data for {current}")
-        current += timedelta(days=1)
+        current += delta
 
 
 if __name__ == "__main__":

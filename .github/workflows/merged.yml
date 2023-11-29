@@ -19,7 +19,7 @@ jobs:
         run: python -m poetry install
       - name: Generate Coverage report
         run: |
-          python -m poetry run coverage run pytest tests/
+          python -m poetry run coverage run -m pytest ./tests/
           python -m poetry run coverage json
         env:
           ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }}
@@ -44,7 +44,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install poetry
     - name: Install package
-      run: python -m poetry Install
+      run: python -m poetry install
     - name: Test and lint package
       uses: microsoft/action-python@0.7.2
       with:

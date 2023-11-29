@@ -53,7 +53,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install poetry
     - name: Install package
-      run: python -m poetry Install
+      run: python -m poetry install
     - name: Test and lint package
       uses: microsoft/action-python@0.7.2
       with:

@@ -58,4 +58,5 @@ jobs:
       uses: microsoft/action-python@0.7.2
       with:
         pyright: false
+      env:
         ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }}

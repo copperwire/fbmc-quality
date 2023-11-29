@@ -19,9 +19,10 @@ jobs:
         run: python -m poetry build
       - name: Generate Coverage report
         run: |
-          export ENTSOE_API_KEY='${{ secrets.ENTSOE_API_KEY }}'
           python -m poetry run coverage run pytest tests/
           python -m poetry run coverage json
+        env:
+          ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }}
       - name: Update Coverage Badge
         # GitHub actions: default branch variable
         # https://stackoverflow.com/questions/64781462/github-actions-default-branch-variable

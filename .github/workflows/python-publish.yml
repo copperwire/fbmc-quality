@@ -35,7 +35,6 @@ jobs:
     - name: Test and lint package
       uses: microsoft/action-python@0.7.2
       with:
-        bandit: false
         pyright: false
         ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }}
     - name: Publish package

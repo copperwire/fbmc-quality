@@ -4709,4 +4709,4 @@ app-template = ["levenshtein", "plotly", "simstring-fast", "streamlit", "streaml
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.11.0 || >3.11.0,<4.0"
-content-hash = "18028e7548c90cb986fd316f6acf70a305c0d938b0224dd7bf64a4e5709c8bb5"
+content-hash = "9054930cf4a91b24fd621cdac9a34df81e3b756d9ba4e3b4549b39908c5febd3"

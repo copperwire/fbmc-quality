@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 import typer
+from pytz import timezone
 
 from fbmc_quality.entsoe_data.fetch_entsoe_data import fetch_net_position_from_crossborder_flows
 
@@ -18,6 +19,9 @@ def main(
     typer.echo(f"From Date: {from_date}")
     typer.echo(f"To Date: {to_date}")
 
+    utc = timezone("utc")
+    from_date = utc.localize(from_date)
+    to_date = utc.localize(to_date)
     current = from_date
 
     while current < to_date:

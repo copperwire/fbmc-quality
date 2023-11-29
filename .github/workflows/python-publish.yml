@@ -32,6 +32,12 @@ jobs:
         pip install poetry
     - name: Build package
       run: python -m poetry build
+    - name: Test and lint package
+      uses: microsoft/action-python@0.7.2
+      with:
+        bandit: false
+        pyright: false
+        ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }}
     - name: Publish package
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       with:

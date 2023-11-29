@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 import typer
+from pytz import timezone
 
 from fbmc_quality.jao_data.fetch_jao_data import fetch_jao_dataframe_timeseries
 
@@ -18,8 +19,12 @@ def main(
     typer.echo(f"From Date: {from_date}")
     typer.echo(f"To Date: {to_date}")
 
-    current = from_date
     delta = timedelta(days=2)
+    utc = timezone("utc")
+    from_date = utc.localize(from_date)
+    to_date = utc.localize(to_date)
+
+    current = from_date
 
     while current < to_date:
         _ = fetch_jao_dataframe_timeseries(current, current + delta)

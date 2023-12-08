@@ -15,7 +15,7 @@ from sqlalchemy import Engine, create_engine
 
 from fbmc_quality.dataframe_schemas.cache_db import DB_PATH
 from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
-from fbmc_quality.dataframe_schemas.schemas import Base, JaoData
+from fbmc_quality.dataframe_schemas.schemas import JaoData
 from fbmc_quality.datetime_handlers.handle_timezones import convert_date_to_utc_pandas
 from fbmc_quality.exceptions.fbmc_exceptions import WrongTimezoneException
 
@@ -195,8 +195,6 @@ def fetch_jao_dataframe_timeseries(from_time: timedata, to_time: timedata) -> Da
     """
     logger = logging.getLogger()
 
-    engine = create_engine("duckdb:///" + str(DB_PATH))
-    Base.metadata.create_all(engine)
     from_time_pd = convert_date_to_utc_pandas(from_time)
     to_time_pd = convert_date_to_utc_pandas(to_time)
 

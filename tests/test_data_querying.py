@@ -41,7 +41,6 @@ def test_entsoe_data(tmp_path):
     os.environ["DB_PATH"] = str(Path(tmp_path) / "test_data.duckdb")
 
     from fbmc_quality.dataframe_schemas.cache_db import DB_PATH
-    from fbmc_quality.dataframe_schemas.schemas import Base
     from fbmc_quality.entsoe_data.fetch_entsoe_data import (
         _get_cross_border_flow_from_api,
         convert_date_to_utc_pandas,
@@ -57,7 +56,6 @@ def test_entsoe_data(tmp_path):
     to_time = datetime(2023, 4, 1, 4, tzinfo=timezone("utc"))
 
     engine = create_engine("duckdb:///" + str(DB_PATH))
-    Base.metadata.create_all(engine)
     api_key = os.getenv("ENTSOE_API_KEY")
     assert api_key is not None
 

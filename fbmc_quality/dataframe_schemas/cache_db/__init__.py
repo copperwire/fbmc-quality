@@ -1,7 +1,11 @@
+import multiprocessing
 import os
 from pathlib import Path
 
+from sqlalchemy import create_engine
+
 from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
+from fbmc_quality.dataframe_schemas.schemas import Base
 
 
 def create_default_folder(default_folder_path: Path):
@@ -26,3 +30,7 @@ else:
         raise FileNotFoundError(f"No folder named {path_to_db.parent}")
 
 DB_PATH = path_to_db
+
+if multiprocessing.current_process().name == "MainProcess":
+    engine = create_engine("duckdb:///" + str(DB_PATH))
+    Base.metadata.create_all(engine)

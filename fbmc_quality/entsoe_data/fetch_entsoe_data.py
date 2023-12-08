@@ -16,7 +16,7 @@ from sqlalchemy import Engine, create_engine
 
 from fbmc_quality.dataframe_schemas.cache_db import DB_PATH
 from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
-from fbmc_quality.dataframe_schemas.schemas import Base, NetPosition
+from fbmc_quality.dataframe_schemas.schemas import NetPosition
 from fbmc_quality.datetime_handlers.handle_timezones import convert_date_to_utc_pandas
 from fbmc_quality.enums.bidding_zones import ALT_NAME_MAP, BIDDING_ZONE_CNEC_MAP, AltBiddingZonesEnum, BiddingZonesEnum
 from fbmc_quality.exceptions.fbmc_exceptions import ENTSOELookupException
@@ -204,9 +204,6 @@ def resample_to_hour_and_replace(data: pandasDtypes) -> pandasDtypes:
 def _get_cross_border_flow(
     start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area, _recurse: bool = True
 ) -> "pd.Series[float]":
-    engine = create_engine("duckdb:///" + str(DB_PATH))
-    Base.metadata.create_all(engine)
-
     connection = duckdb.connect(str(DB_PATH), read_only=False)
     cached_data = None
     with suppress(duckdb.CatalogException):
@@ -229,6 +226,7 @@ def _get_cross_border_flow(
         if len(unique_timestamps) == hours or len(unique_timestamps) == quarters:
             return cached_retval
 
+    engine = create_engine("duckdb:///" + str(DB_PATH))
     query_and_cache_data(start, end, area_from, area_to, engine)
 
     if not _recurse:

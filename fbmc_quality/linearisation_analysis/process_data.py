@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import datetime
 from typing import Callable
 
 import numpy as np
@@ -63,20 +63,13 @@ def transform_delta_np_and_ptdfs_to_numpy(
     return merged_data.to_numpy()
 
 
-def load_jao_data_basecase_nps_and_observed_nps(start_in: date | datetime, end_in: date | datetime) -> JaoDataAndNPS:
-    if isinstance(start_in, datetime):
-        start = start_in
-    else:
-        start = datetime(start_in.year, start_in.month, start_in.day)
-
-    if isinstance(end_in, datetime):
-        end = end_in
-    else:
-        end = datetime(end_in.year, end_in.month, end_in.day)
-
+def fetch_jao_data_basecase_nps_and_observed_nps(
+    start: datetime | pd.Timestamp, end: datetime | pd.Timestamp
+) -> JaoDataAndNPS:
     jao_data = fetch_jao_dataframe_timeseries(start, end)
     observed_nps = fetch_net_position_from_crossborder_flows(start, end)
     basecase_nps = compute_basecase_net_pos(start, end)
+
     if observed_nps is None:
         raise ValueError(f"No observed data for {start} {end}")
     if basecase_nps is None:

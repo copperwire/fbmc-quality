@@ -78,7 +78,7 @@ Lets begin::
 
     from fbmc_quality.linearisation_analysis import compute_linearisation_error
     from fbmc_quality.linearisation_analysis import compute_linearisation_error, compute_linearised_flow
-    from fbmc_quality.linearisation_analysis import load_data_for_corridor_cnec, load_jao_data_basecase_nps_and_observed_nps
+    from fbmc_quality.linearisation_analysis import load_data_for_corridor_cnec, fetch_jao_data_basecase_nps_and_observed_nps
 
     from datetime import date
     import plotly.express as px
@@ -87,7 +87,7 @@ Lets begin::
 
     start = date(2023, 4, 1)
     end = date(2023, 5, 1)
-    data = load_jao_data_basecase_nps_and_observed_nps(start, end)
+    data = fetch_jao_data_basecase_nps_and_observed_nps(start, end)
     cnec_name ='NO3->SE2'
     cnec_data = load_data_for_corridor_cnec(
         cnec_name,
@@ -103,7 +103,7 @@ The
 
 and,
 
-.. autofunction:: fbmc_quality.linearisation_analysis.load_jao_data_basecase_nps_and_observed_nps
+.. autofunction:: fbmc_quality.linearisation_analysis.fetch_jao_data_basecase_nps_and_observed_nps
 
 returns `Dataclass` like `NamedTuples`. These containers are used in the workflow to pass data in a structured way.
 

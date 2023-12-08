@@ -58,5 +58,10 @@ jobs:
       uses: microsoft/action-python@0.7.2
       with:
         pyright: false
+        fail_on_error : true
+        pytest: true
+        black: true
+        flake8: true
+        root: '.'
       env:
         ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }}

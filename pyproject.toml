@@ -63,7 +63,7 @@ plotting = ['plotly', 'geopandas', 'shapely', 'geojson-rewind', 'pillow']
 all = ['streamlit', "plotly", 'geopandas', 'shapely', 'geojson-rewind', 'pillow']
 
 [tool.poetry-dynamic-versioning]
-enable = false
+enable = true
 vcs = "git"
 style = "semver"
 

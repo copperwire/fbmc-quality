@@ -34,3 +34,4 @@ DB_PATH = path_to_db
 if multiprocessing.current_process().name == "MainProcess":
     engine = create_engine("duckdb:///" + str(DB_PATH))
     Base.metadata.create_all(engine)
+    engine.dispose()

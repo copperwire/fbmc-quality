@@ -13,15 +13,15 @@ fetch_entsoe_data = 'fbmc_quality.entsoe_data.entsoe_store_cli:app'
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11.0 || >3.11.0,<4.0"
 requests = "^2.31.0"
-polars = "^0.18.3"
+polars = "^0.20.3"
 beautifulsoup4 = "^4.12.2"
-entsoe-py = "^0.5.9"
+entsoe-py = ">=0.6.2"
 matplotlib = "^3.7.2"
 tzlocal = "^5.0.1"
 pytz = "^2023.3"
 pyarrow = "^12.0.1"
 scikit-learn = "^1.3.0"
-pandera = {extras = ["mypy"], version = "^0.16.1"}
+pandera = {extras = ["mypy"], version = "^0.17.0"}
 typer = {extras = ["all"], version = "^0.9.0"}
 aiohttp = "^3.8.5"
 pandas = "^2.1.0"

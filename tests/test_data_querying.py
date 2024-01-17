@@ -55,7 +55,6 @@ def test_entsoe_data(tmp_path):
     from_time = datetime(2023, 4, 1, 0, tzinfo=timezone("utc"))
     to_time = datetime(2023, 4, 1, 4, tzinfo=timezone("utc"))
 
-    engine = create_engine("duckdb:///" + str(DB_PATH))
     api_key = os.getenv("ENTSOE_API_KEY")
     assert api_key is not None
 
@@ -73,11 +72,13 @@ def test_entsoe_data(tmp_path):
                 convert_date_to_utc_pandas(from_time), convert_date_to_utc_pandas(to_time), to_area, from_area
             )
 
+            engine = create_engine("duckdb:///" + str(DB_PATH))
             query_and_cache_data(
                 convert_date_to_utc_pandas(from_time), convert_date_to_utc_pandas(to_time), from_area, to_area, engine
             )
             flow = resample_to_hour_and_replace((oneway_flow - otherway_flow).to_frame("flow"))
             flow.index.rename("time", True)
+            engine.dispose()
 
             os.environ["ENTSOE_API_KEY"] = ""
             cached_flow = fetch_entsoe_data_from_bidding_zones(from_time, to_time, from_zone, to_zone)

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Callable
+from typing import Callable, Iterable
 
 import numpy as np
 import pandas as pd
@@ -97,8 +97,7 @@ def load_data_for_internal_cnec(
         CnecDataAndNPS | None: Data on the CNEC and with relevant net_positions
     """
     cnec_id = get_cnec_id_from_name(cnecName, jaodata_and_net_positions.jaoData)
-    cnec_ds = jaodata_and_net_positions.jaoData.xs(cnec_id, level=JaoData.cnec_id)
-
+    cnec_ds: pd.DataFrame = jaodata_and_net_positions.jaoData.xs(cnec_id, level=JaoData.cnec_id)
     times: "pd.DatetimeIndex" = jaodata_and_net_positions.jaoData.index.get_level_values("time")
     freq = pd.infer_freq(times.unique().sort_values())
     if freq is None:
@@ -112,15 +111,9 @@ def load_data_for_internal_cnec(
     if observed_flow is None or observed_flow.empty or cnec_ds.empty:
         return None
 
-    index_alignment = pd.DatetimeIndex(
-        (
-            set(cnec_ds.index.get_level_values(JaoData.time))
-            .intersection(observed_flow.index)
-            .intersection(jaodata_and_net_positions.observedNPs.index)
-            .intersection(jaodata_and_net_positions.basecaseNPs.index)
-        )
-    ).sort_values()
-
+    index_alignment = align_by_index_overlap(
+        jaodata_and_net_positions.basecaseNPs, jaodata_and_net_positions.observedNPs, cnec_ds, observed_flow
+    )
     cnec_ds = cnec_ds.loc[index_alignment, :]
     observed_flow = observed_flow.loc[index_alignment, :]
     jaodata_and_net_positions = JaoDataAndNPS(
@@ -137,6 +130,14 @@ def load_data_for_internal_cnec(
         jaodata_and_net_positions.observedNPs,
         observed_flow,
     )
+
+
+def align_by_index_overlap(*dataframes: pd.DataFrame | pd.Series) -> pd.DatetimeIndex:
+    aligmnent_set = dataframes[0].index
+    for frame in dataframes[1:]:
+        aligmnent_set = aligmnent_set.intersection(frame.index)
+    index_alignment = pd.DatetimeIndex(aligmnent_set).sort_values()
+    return index_alignment
 
 
 def load_data_for_corridor_cnec(cnecName: str, jaodata_and_net_positions: JaoDataAndNPS) -> CnecDataAndNPS | None:

@@ -204,7 +204,7 @@ def resample_to_hour_and_replace(data: pandasDtypes) -> pandasDtypes:
 def _get_cross_border_flow(
     start: pd.Timestamp, end: pd.Timestamp, area_from: Area, area_to: Area, _recurse: bool = True
 ) -> "pd.Series[float]":
-    connection = duckdb.connect(str(DB_PATH), read_only=False)
+    connection = duckdb.connect(str(DB_PATH), read_only=True)
     cached_data = None
     with suppress(duckdb.CatalogException):
         cached_data = connection.sql(
@@ -228,6 +228,7 @@ def _get_cross_border_flow(
 
     engine = create_engine("duckdb:///" + str(DB_PATH))
     query_and_cache_data(start, end, area_from, area_to, engine)
+    engine.dispose()
 
     if not _recurse:
         raise RuntimeError("Recurse calls did not yield all data from ENTSOE - report this error to the maintainer")

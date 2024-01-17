@@ -94,6 +94,7 @@ async def _fetch_jao_dataframe_timeseries(time_points: list[datetime]) -> DataFr
             results = await _fetch_jao_dataframe_from_datetime(time_point, engine, session)
             all_results.append(results)
 
+    engine.dispose()
     if all_results:
         return_frame = pd.concat(all_results)
         return return_frame  # type: ignore
@@ -124,7 +125,7 @@ def try_jao_cache_before_async(
         time_range.append(loop_time)
         loop_time += pd.Timedelta(hours=1)
 
-    connection = duckdb.connect(str(DB_PATH), read_only=False)
+    connection = duckdb.connect(str(DB_PATH), read_only=True)
     try:
         cached_data = (
             connection.sql(

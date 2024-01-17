@@ -1,6 +1,7 @@
-from typing import Union
+from typing import Literal, Union
 
 import pandas as pd
+import numpy as np
 from pandera.typing import DataFrame
 
 from fbmc_quality.dataframe_schemas import CnecData, JaoData, NetPosition
@@ -41,6 +42,14 @@ def compute_linearisation_error(
         pd.Series[pd.Float64Dtype]: linearisation error
     """
     linear_flow = compute_linearised_flow(cnec_data, target_net_positions)
+    max_flow: "pd.Series[pd.Float64Dtype]" = cnec_data[JaoData.maxFlow]
+    if max_flow.shape == linear_flow.shape:
+        linear_flow = np.minimum(max_flow.to_numpy(), linear_flow.to_numpy())
+    else:
+        lin_flow_arr = linear_flow.to_numpy()
+        max_flow_arr = np.ones_like(lin_flow_arr)
+        max_flow_arr[:] = max_flow.mean()
+        linear_flow = np.minimum(max_flow_arr, lin_flow_arr)
     rel_error = target_flow - linear_flow
     return rel_error
 
@@ -50,6 +59,7 @@ def compute_cnec_vulnerability_to_err(
     target_net_positions: DataFrame[NetPosition],
     target_flow: "pd.Series[pd.Float64Dtype]",
     alt_fmax: Union["pd.Series[pd.Float64Dtype]", None] = None,
+    relative_or_absolute: Literal["relative", "absolute"] = "relative",
 ) -> pd.DataFrame:
     r"""returns the mean value of the vulnerability score, and mean basecase relative margin
 

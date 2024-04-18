@@ -4,6 +4,7 @@ from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
+from pkg_resources import declare_namespace
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -210,6 +211,7 @@ def all_cnecs_analysis(
                     "cnec": cnec_name,
                     "Significant Shadow Price": cnec_name in SHADOW_CNECS,
                     "Significant Domain Limit": (cnec_data[JaoData.nonRedundant].sum() / len(cnec_data)) > 0.1
+
                 }
             )
 

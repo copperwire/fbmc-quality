@@ -147,7 +147,7 @@ class JaoBase(pa.DataFrameModel):
     contStatus: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
     imaxMethod: Series[pd.StringDtype] = pa.Field(coerce=True)  #: JAO field value
     contingencies: Series[pd.StringDtype] = pa.Field(coerce=True)  #: JAO field value
-    nonRedundant : Series[pd.BooleanDtype] = pa.Field(coerce=True)  #: JAO field value
+    nonRedundant: Series[pd.BooleanDtype] = pa.Field(coerce=True)  #: JAO field value
     significant: Series[pd.BooleanDtype] = pa.Field(coerce=True)  #: JAO field value
     ram: Series[float]  #: JAO field value
     minFlow: Series[float]  #: JAO field value

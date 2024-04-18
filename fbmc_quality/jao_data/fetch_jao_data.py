@@ -46,50 +46,44 @@ async def get_ptdfs(date: timedata, session: aiohttp.ClientSession) -> pd.DataFr
     date_str = date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
     to_date_str = (date + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
-    url = 'https://test-publicationtool.jao.eu/nordic/api/data/finalComputation'
+    url = "https://test-publicationtool.jao.eu/nordic/api/data/finalComputation"
     headers = {
-   "Accept":"application/json, text/plain, */*",
-  "Accept-Encoding":"gzip, deflate, br, zstd",
-  "Accept-Language":"nb-NO,nb;q=0.9,no;q=0.8,nn;q=0.7,en-US;q=0.6,en;q=0.5",
-  "Origin":"https://test-publicationtool.jao.eu",
-  "Referer":"https://test-publicationtool.jao.eu/nordic/flowbasedDomain",
-  "Sec-Fetch-Dest":"empty",
-  "Sec-Fetch-Mode":"cors",
-  "Sec-Fetch-Site":"same-origin",
-  "X-Requested-With":"XMLHttpRequest",
-}
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Encoding": "gzip, deflate, br, zstd",
+        "Accept-Language": "nb-NO,nb;q=0.9,no;q=0.8,nn;q=0.7,en-US;q=0.6,en;q=0.5",
+        "Origin": "https://test-publicationtool.jao.eu",
+        "Referer": "https://test-publicationtool.jao.eu/nordic/flowbasedDomain",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        "X-Requested-With": "XMLHttpRequest",
+    }
 
     data = {
         "FromUtc": date_str,
         "ToUtc": to_date_str,
-        "Filter": '{}',
-        "Skip": '0',
-        "Take": '0',
+        "Filter": "{}",
+        "Skip": "0",
+        "Take": "0",
     }
 
     async with session.get(url=url, data=data, headers=headers) as response:
         json = await response.json()
-        if json['totalRowsWithFilter'] == 0:
-            raise JAOLookupException(f'No data for {date_str} to {to_date_str}')
+        if json["totalRowsWithFilter"] == 0:
+            raise JAOLookupException(f"No data for {date_str} to {to_date_str}")
         else:
-            total_num_data = json['totalRowsWithFilter'] 
-    
+            total_num_data = json["totalRowsWithFilter"]
+
     df = pd.DataFrame()  # type: ignore
     args = []
 
     for i in range(0, total_num_data, 100):
-        args.append({
-            'FromUtc': date_str,
-            'ToUtc': to_date_str,
-            'Filter': '{}',
-            'Skip': i,
-            'Take': 100
-        })
+        args.append({"FromUtc": date_str, "ToUtc": to_date_str, "Filter": "{}", "Skip": i, "Take": 100})
 
     for arg in args:
         async with session.get(url=url, data=arg, headers=headers) as response:
             json = await response.json()
-            df = pd.concat([df, pd.DataFrame(json['data'])])
+            df = pd.concat([df, pd.DataFrame(json["data"])])
     return df
 
 

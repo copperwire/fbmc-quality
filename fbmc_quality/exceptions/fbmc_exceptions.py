@@ -1,6 +1,7 @@
 class ENTSOELookupException(Exception):
     pass
 
+
 class JAOLookupException(Exception):
     pass
 

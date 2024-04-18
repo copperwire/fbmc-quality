@@ -72,8 +72,6 @@ ENTSOE_HVDC_ZONE_MAP: dict[BiddingZonesEnum, tuple[Area, Area]] = {
     BiddingZonesEnum.DK1_DE: (Area.DE_LU, Area.DK_1),
     BiddingZonesEnum.DK1_KS: (Area.SE_3, Area.DK_1),
     BiddingZonesEnum.DK1_SK: (Area.NO_2, Area.DK_1),
-    BiddingZonesEnum.DK1_ST: (Area.DK_2, Area.DK_1),
-    BiddingZonesEnum.DK2_ST: (Area.DK_1, Area.DK_2),
 }
 
 

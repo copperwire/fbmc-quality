@@ -1,7 +1,7 @@
 from typing import Literal, Union
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from pandera.typing import DataFrame
 
 from fbmc_quality.dataframe_schemas import CnecData, JaoData, NetPosition

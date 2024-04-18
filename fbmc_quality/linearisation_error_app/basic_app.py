@@ -4,7 +4,6 @@ from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
-from pkg_resources import declare_namespace
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -12,6 +11,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from joblib import Parallel
 from pandas import NaT
+from pkg_resources import declare_namespace
 from pytz import timezone
 
 from fbmc_quality.dataframe_schemas.schemas import JaoData
@@ -38,6 +38,22 @@ logging.basicConfig(level="INFO")
 
 st.set_page_config(layout="wide")
 PARALLEL_CONTEXT = Parallel()
+
+SHADOW_CNECS = [
+    "13791_325  65% 420 Namsos-Ogndal + 30% 420 Namsos-Hofstad + 300 Tunnsjødal-Verdal",
+    "13791_325  65% 420 Namsos-Ogndal + 40% 420 Namsos-Hofstad + 300 Tunnsjødal-Verdal",
+    "15319_10  420 Sylling-Rjukan + 420 Hasle-Rød + 300 Sylling-Flesaker + 300 Tegneby-Flesaker",
+    "15319_182  25% 420 Rjukan-Kvilldal + 300 Mauranger-Blåfalli",
+    "L150_11  40% 420 Hasle-Tegneby + Hasle    T6 Transformator P",
+    "13791_325  15% 420 Hasle-Rød + 300 Mauranger-Blåfalli",
+    "15290_10  40% 420 Høyanger-Sogndal + 300 Øvre Vinstra-Fåberg",
+    "14310_11  55% 300 Blåfalli-Sauda + 300 Husnes-Børtveit",
+    "13791_10  300 Mauranger-Blåfalli",
+    "13791_11  40% 300 Øvre Vinstra-Fåberg + 420 Moskog-Høyanger",
+    "15315_11  40% 300 Minne-Frogner + 300 Roa-Ulven",
+    "L4_11  40% 420 Tegneby-Hasle + 300 Røykås-Tegneby",
+    "13791_325  65% 420 Rød-Grenland + 300 Rød-Porsgrunn",
+]
 
 
 @st.cache_data
@@ -84,7 +100,7 @@ class DataContainer:
         return cnec_data
 
 
-def get_names(data: JaoDataAndNPS)-> 'pd.Series[pd.StringDtype]': 
+def get_names(data: JaoDataAndNPS) -> "pd.Series[pd.StringDtype]":
     return pd.Series(data.jaoData[JaoData.cnecName].unique())
 
 
@@ -140,17 +156,17 @@ def all_cnecs_analysis(
     utc = timezone("utc")
     start = utc.localize(pd.Timestamp(start))
     end = utc.localize(pd.Timestamp(end))
-    
-    st.text('''
+
+    st.text(
+        """
             Plot of the Vulnerability score for all CNECs in a period.
             The x axis shows if the FB process consistently under or overestimated the flow.
             When computing the Linearisation Error, the flow is capped to the max. flow allowable at the CNEC.
             The Vulnerability Score is calculated as: 
-    ''')
-
-    st.latex(
-      r"\text{Relative} \hspace{0.1in} V=\frac{F_{obs} - min(F_{fb-max}, F_{fb})}{F_{limit} - F_{obs}}"
+    """
     )
+
+    st.latex(r"\text{Relative} \hspace{0.1in} V=\frac{F_{obs} - min(F_{fb-max}, F_{fb})}{F_{limit} - F_{obs}}")
     names = None
     data = None
     all_cnec_data = None
@@ -179,7 +195,12 @@ def all_cnecs_analysis(
                 cnec_data = data.jaoData.xs(cnec_id, level=JaoData.cnec_id)
                 overlap = align_by_index_overlap(cnec_data, frame, data.observedNPs)
                 frame = frame.loc[overlap]
-                vuln_cnec_data = compute_cnec_vulnerability_to_err(cnec_data.loc[overlap], data.observedNPs.loc[overlap], frame['flow'].loc[overlap], frame['fmax'].loc[overlap])
+                vuln_cnec_data = compute_cnec_vulnerability_to_err(
+                    cnec_data.loc[overlap],
+                    data.observedNPs.loc[overlap],
+                    frame["flow"].loc[overlap],
+                    frame["fmax"].loc[overlap],
+                )
             except:
                 continue
 
@@ -188,14 +209,13 @@ def all_cnecs_analysis(
                 vuln_cnec_data["vulnerability_score"] > 0
             ].median()
 
-
             too_much_allocated_capacity.append(
                 {
                     "mtus_above_threshod": mtus_above_threshold,
                     "median_above_zero": median_above_zero,
                     "cnec": cnec_name,
                     "Significant Shadow Price": cnec_name in SHADOW_CNECS,
-                    "Significant Domain Limit": (cnec_data[JaoData.presolved].sum() / len(cnec_data)) > 0.1
+                    "Significant Domain Limit": (cnec_data[JaoData.nonRedundant].sum() / len(cnec_data)) > 0.1,
                 }
             )
 
@@ -204,10 +224,13 @@ def all_cnecs_analysis(
                 vuln_cnec_data["vulnerability_score"] < 0
             ].median()
             too_little_allocated_capacity.append(
-                {"mtus_below_threshod": mtus_below_threshold, "median_below_zero": median_below_zero, "cnec": cnec_name,
+                {
+                    "mtus_below_threshod": mtus_below_threshold,
+                    "median_below_zero": median_below_zero,
+                    "cnec": cnec_name,
                     "Significant Shadow Price": cnec_name in SHADOW_CNECS,
-                    "Significant Domain Limit": (cnec_data[JaoData.presolved].sum() / len(cnec_data)) > 0.1
-                 }
+                    "Significant Domain Limit": (cnec_data[JaoData.nonRedundant].sum() / len(cnec_data)) > 0.1,
+                }
             )
 
         overallocated_capacity = pd.DataFrame(too_much_allocated_capacity)
@@ -234,11 +257,11 @@ def all_cnecs_analysis(
         # )
         fig_over = px.scatter(
             overallocated_capacity,
-            x='median_above_zero',
-            y='mtus_above_threshod',
+            x="median_above_zero",
+            y="mtus_above_threshod",
             hover_data=["cnec"],
-            color='Significant Shadow Price',
-            symbol='Significant Domain Limit'
+            color="Significant Shadow Price",
+            symbol="Significant Domain Limit",
         )
 
         fig_over.update_layout(
@@ -248,16 +271,12 @@ def all_cnecs_analysis(
             font=dict(
                 size=24,  # Set the font size here
             ),
-                xaxis=dict(
-        tickfont=dict(size=14)  # Change the size value as needed
-    ),
-    yaxis=dict(
-        tickfont=dict(size=14)  # Change the size value as needed
-    )
+            xaxis=dict(tickfont=dict(size=14)),  # Change the size value as needed
+            yaxis=dict(tickfont=dict(size=14)),  # Change the size value as needed
         )
         st.plotly_chart(fig_over, use_container_width=True)
         filename = f"{start}-to-{end}-overloadrisk.html"
-        st.download_button('Download Overestimate Plot as HTML', fig_over.to_html(), file_name=filename)
+        st.download_button("Download Overestimate Plot as HTML", fig_over.to_html(), file_name=filename)
 
         # fig_under = go.Figure()
         # fig_under.add_trace(
@@ -269,13 +288,13 @@ def all_cnecs_analysis(
         #     )
         # )
 
-        fig_under= px.scatter(
+        fig_under = px.scatter(
             underallocated_capacity,
-            x='median_below_zero',
-            y='mtus_below_threshod',
+            x="median_below_zero",
+            y="mtus_below_threshod",
             hover_data=["cnec"],
-            color='Significant Shadow Price',
-            symbol='Significant Domain Limit'
+            color="Significant Shadow Price",
+            symbol="Significant Domain Limit",
         )
         fig_under.update_layout(
             title="CNECs that may have caused too tight capacity restrictions",
@@ -284,16 +303,12 @@ def all_cnecs_analysis(
             font=dict(
                 size=24,  # Set the font size here
             ),
-                xaxis=dict(
-        tickfont=dict(size=14)  # Change the size value as needed
-    ),
-    yaxis=dict(
-        tickfont=dict(size=14)  # Change the size value as needed
-    )
+            xaxis=dict(tickfont=dict(size=14)),  # Change the size value as needed
+            yaxis=dict(tickfont=dict(size=14)),  # Change the size value as needed
         )
         st.plotly_chart(fig_under, use_container_width=True)
         filename = f"{start}-to-{end}-underallocaterisk.html"
-        st.download_button('Download Underestimate Plot as HTML', fig_under.to_html(), file_name=filename)
+        st.download_button("Download Underestimate Plot as HTML", fig_under.to_html(), file_name=filename)
 
 
 def single_cnec_analysis(internal_cnec_func, deanonymizer, st):

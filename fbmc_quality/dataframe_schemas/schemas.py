@@ -32,6 +32,9 @@ class JaoModel(Base):  # type: ignore
     id = Column(Integer)  #: JAO field value
     dateTimeUtc = Column(TIMESTAMP(timezone=True))  #: JAO field value
     tso = Column(String)  #: JAO field value
+    mrId = Column(String)  #: JAO field value
+    biddingZoneFrom = Column(String)
+    biddingZoneTo = Column(String)
     cnecName = Column(String)  #: JAO field value
     cnecType = Column(String)  #: JAO field value
     cneName = Column(String)  #: JAO field value
@@ -50,9 +53,10 @@ class JaoModel(Base):  # type: ignore
     contStatus = Column(String)  #: JAO field value
     contSubstationFrom = Column(String)  #: JAO field value
     contSubstationTo = Column(String)  #: JAO field value
+    contEic = Column(String)
     imaxMethod = Column(String)  #: JAO field value
     contingencies = Column(String)  #: JAO field value
-    presolved = Column(Boolean)  #: JAO field value
+    nonRedundant = Column(Boolean)  #: JAO field value
     significant = Column(Boolean)  #: JAO field value
     ram = Column(Float)  #: JAO field value
     minFlow = Column(Float)  #: JAO field value
@@ -79,10 +83,10 @@ class JaoModel(Base):  # type: ignore
     DK1_DE = Column(Float)  #: value of bidding zone
     DK1_KS = Column(Float)  #: value of bidding zone
     DK1_SK = Column(Float)  #: value of bidding zone
-    DK1_ST = Column(Float)  #: value of bidding zone
+    DK1_SB = Column(Float)  #: value of bidding zone
     DK2 = Column(Float)  #: value of bidding zone
     DK2_KO = Column(Float)  #: value of bidding zone
-    DK2_ST = Column(Float)  #: value of bidding zone
+    DK2_SB = Column(Float)  #: value of bidding zone
     FI = Column(Float)  #: value of bidding zone
     FI_EL = Column(Float)  #: value of bidding zone
     FI_FS = Column(Float)  #: value of bidding zone
@@ -137,21 +141,13 @@ class JaoBase(pa.DataFrameModel):
     cneType: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
     cneStatus: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
     cneEic: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
-    direction: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
-    hubFrom: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
-    hubTo: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
     substationFrom: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
     substationTo: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
-    elementType: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
-    fmaxType: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
-    contTso: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
     contName: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
     contStatus: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
-    contSubstationFrom: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
-    contSubstationTo: Series[pd.StringDtype] = pa.Field(coerce=True, nullable=True)  #: JAO field value
     imaxMethod: Series[pd.StringDtype] = pa.Field(coerce=True)  #: JAO field value
     contingencies: Series[pd.StringDtype] = pa.Field(coerce=True)  #: JAO field value
-    presolved: Series[pd.BooleanDtype] = pa.Field(coerce=True)  #: JAO field value
+    nonRedundant: Series[pd.BooleanDtype] = pa.Field(coerce=True)  #: JAO field value
     significant: Series[pd.BooleanDtype] = pa.Field(coerce=True)  #: JAO field value
     ram: Series[float]  #: JAO field value
     minFlow: Series[float]  #: JAO field value
@@ -160,19 +156,12 @@ class JaoBase(pa.DataFrameModel):
     imax: Series[float]  #: JAO field value
     fmax: Series[float]  #: JAO field value
     frm: Series[float]  #: JAO field value
-    frefInit: Series[float] = pa.Field(nullable=True, coerce=True)  #: JAO field value
     fnrao: Series[float]  #: JAO field value
     fref: Series[float]  #: JAO field value
-    fcore: Series[float] = pa.Field(nullable=True, coerce=True)  #: JAO field value
     fall: Series[float]  #: JAO field value
-    fuaf: Series[float] = pa.Field(nullable=True, coerce=True)  #: JAO field value
     amr: Series[float]  #: JAO field value
     aac: Series[float]  #: JAO field value
-    ltaMargin: Series[float] = pa.Field(nullable=True, coerce=True)  #: JAO field value
-    cva: Series[float] = pa.Field(nullable=True, coerce=True)  #: JAO field value
     iva: Series[float]  #: JAO field value
-    ftotalLtn: Series[float] = pa.Field(nullable=True, coerce=True)  #: JAO field value
-    fltn: Series[float] = pa.Field(nullable=True, coerce=True)  #: JAO field value
 
 
 class BiddingZones(pa.DataFrameModel):
@@ -181,10 +170,8 @@ class BiddingZones(pa.DataFrameModel):
     DK1_DE: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
     DK1_KS: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
     DK1_SK: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
-    DK1_ST: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
     DK2: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
     DK2_KO: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
-    DK2_ST: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
     FI: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
     FI_EL: Series[float] = pa.Field(nullable=True)  #: value of bidding zone
     FI_FS: Series[float] = pa.Field(nullable=True)  #: value of bidding zone

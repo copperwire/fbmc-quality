@@ -2,6 +2,10 @@ class ENTSOELookupException(Exception):
     pass
 
 
+class JAOLookupException(Exception):
+    pass
+
+
 class WrongTimezoneException(Exception):
     pass
 

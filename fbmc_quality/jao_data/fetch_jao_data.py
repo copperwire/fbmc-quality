@@ -3,7 +3,7 @@ import hashlib
 import logging
 import uuid
 import warnings
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Hashable, Iterable, TypeVar
 
 import aiohttp
@@ -17,7 +17,7 @@ from fbmc_quality.dataframe_schemas.cache_db import DB_PATH
 from fbmc_quality.dataframe_schemas.cache_db.cache_db_functions import store_df_in_table
 from fbmc_quality.dataframe_schemas.schemas import JaoData
 from fbmc_quality.datetime_handlers.handle_timezones import convert_date_to_utc_pandas
-from fbmc_quality.exceptions.fbmc_exceptions import WrongTimezoneException
+from fbmc_quality.exceptions.fbmc_exceptions import JAOLookupException, WrongTimezoneException
 
 warnings.filterwarnings(
     "ignore",
@@ -32,7 +32,7 @@ def create_uuid_from_string(val: str) -> str:
     return str(uuid.UUID(hex=hex_string))
 
 
-async def get_ptdfs(date: timedata, session: aiohttp.ClientSession) -> dict[str, object]:
+async def get_ptdfs(date: timedata, session: aiohttp.ClientSession) -> pd.DataFrame:
     """get PTDFs from JAO, query by datetime
 
     Args:
@@ -42,12 +42,55 @@ async def get_ptdfs(date: timedata, session: aiohttp.ClientSession) -> dict[str,
         Dict[str, object]: HTTP payload from the API request
     """
     session.verify = False
-    date_str = date.strftime("%Y-%m-%dT%H")
 
-    url = f"https://test-publicationtool.jao.eu/nordic/api/nordic/finalComputation/index?date={date_str}%3A00%3A00.000Z&search=&skip=0"  # noqa
+    date_str = date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    to_date_str = (date + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
-    async with session.get(url=url) as response:
-        return await response.json()
+    url = 'https://test-publicationtool.jao.eu/nordic/api/data/finalComputation'
+    headers = {
+   "Accept":"application/json, text/plain, */*",
+  "Accept-Encoding":"gzip, deflate, br, zstd",
+  "Accept-Language":"nb-NO,nb;q=0.9,no;q=0.8,nn;q=0.7,en-US;q=0.6,en;q=0.5",
+  "Origin":"https://test-publicationtool.jao.eu",
+  "Referer":"https://test-publicationtool.jao.eu/nordic/flowbasedDomain",
+  "Sec-Fetch-Dest":"empty",
+  "Sec-Fetch-Mode":"cors",
+  "Sec-Fetch-Site":"same-origin",
+  "X-Requested-With":"XMLHttpRequest",
+}
+
+    data = {
+        "FromUtc": date_str,
+        "ToUtc": to_date_str,
+        "Filter": '{}',
+        "Skip": '0',
+        "Take": '0',
+    }
+
+    async with session.get(url=url, data=data, headers=headers) as response:
+        json = await response.json()
+        if json['totalRowsWithFilter'] == 0:
+            raise JAOLookupException(f'No data for {date_str} to {to_date_str}')
+        else:
+            total_num_data = json['totalRowsWithFilter'] 
+    
+    df = pd.DataFrame()  # type: ignore
+    args = []
+
+    for i in range(0, total_num_data, 100):
+        args.append({
+            'FromUtc': date_str,
+            'ToUtc': to_date_str,
+            'Filter': '{}',
+            'Skip': i,
+            'Take': 100
+        })
+
+    for arg in args:
+        async with session.get(url=url, data=arg, headers=headers) as response:
+            json = await response.json()
+            df = pd.concat([df, pd.DataFrame(json['data'])])
+    return df
 
 
 async def _fetch_jao_dataframe_from_datetime(
@@ -57,11 +100,10 @@ async def _fetch_jao_dataframe_from_datetime(
 
     if session is None:
         async with aiohttp.ClientSession() as new_session:
-            data_from_jao = await get_ptdfs(date, new_session)
+            df = await get_ptdfs(date, new_session)
     else:
-        data_from_jao = await get_ptdfs(date, session)
+        df = await get_ptdfs(date, session)
 
-    df = pd.DataFrame(data_from_jao["data"])  # type: ignore
     df = df.loc[df[JaoData.cnecName].notnull(), :]
     df[JaoData.cnec_id] = df.apply(
         lambda row: create_uuid_from_string(row[JaoData.cnecName] + row[JaoData.contName]), axis=1

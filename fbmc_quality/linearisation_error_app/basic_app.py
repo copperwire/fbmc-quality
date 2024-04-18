@@ -4,7 +4,6 @@ from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
-from pkg_resources import declare_namespace
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -39,6 +38,21 @@ logging.basicConfig(level="INFO")
 st.set_page_config(layout="wide")
 PARALLEL_CONTEXT = Parallel()
 
+SHADOW_CNECS = [
+    '13791_325  65% 420 Namsos-Ogndal + 30% 420 Namsos-Hofstad + 300 Tunnsjødal-Verdal',
+    '13791_325  65% 420 Namsos-Ogndal + 40% 420 Namsos-Hofstad + 300 Tunnsjødal-Verdal',
+    '15319_10  420 Sylling-Rjukan + 420 Hasle-Rød + 300 Sylling-Flesaker + 300 Tegneby-Flesaker',
+    '15319_182  25% 420 Rjukan-Kvilldal + 300 Mauranger-Blåfalli',
+    'L150_11  40% 420 Hasle-Tegneby + Hasle    T6 Transformator P',
+    '13791_325  15% 420 Hasle-Rød + 300 Mauranger-Blåfalli',
+    '15290_10  40% 420 Høyanger-Sogndal + 300 Øvre Vinstra-Fåberg',
+    '14310_11  55% 300 Blåfalli-Sauda + 300 Husnes-Børtveit',
+    '13791_10  300 Mauranger-Blåfalli',
+    '13791_11  40% 300 Øvre Vinstra-Fåberg + 420 Moskog-Høyanger',
+    '15315_11  40% 300 Minne-Frogner + 300 Roa-Ulven',
+    'L4_11  40% 420 Tegneby-Hasle + 300 Røykås-Tegneby',
+    '13791_325  65% 420 Rød-Grenland + 300 Rød-Porsgrunn',
+]
 
 @st.cache_data
 def get_data(start, end, _deanonymizer):
@@ -195,7 +209,7 @@ def all_cnecs_analysis(
                     "median_above_zero": median_above_zero,
                     "cnec": cnec_name,
                     "Significant Shadow Price": cnec_name in SHADOW_CNECS,
-                    "Significant Domain Limit": (cnec_data[JaoData.presolved].sum() / len(cnec_data)) > 0.1
+                    "Significant Domain Limit": (cnec_data[JaoData.nonRedundant].sum() / len(cnec_data)) > 0.1
                 }
             )
 
@@ -206,7 +220,7 @@ def all_cnecs_analysis(
             too_little_allocated_capacity.append(
                 {"mtus_below_threshod": mtus_below_threshold, "median_below_zero": median_below_zero, "cnec": cnec_name,
                     "Significant Shadow Price": cnec_name in SHADOW_CNECS,
-                    "Significant Domain Limit": (cnec_data[JaoData.presolved].sum() / len(cnec_data)) > 0.1
+                    "Significant Domain Limit": (cnec_data[JaoData.nonRedundant].sum() / len(cnec_data)) > 0.1
                  }
             )
 

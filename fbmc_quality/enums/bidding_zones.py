@@ -14,10 +14,8 @@ class BiddingZonesEnum(str, Enum):
     DK1_DE = "DK1_DE"
     DK1_KS = "DK1_KS"
     DK1_SK = "DK1_SK"
-    DK1_ST = "DK1_ST"
     DK2_SB = "DK2_SB"
     DK2_KO = "DK2_KO"
-    DK2_ST = "DK2_ST"
     DK2 = "DK2"
     FI = "FI"
     FI_EL = "FI_EL"
@@ -94,12 +92,6 @@ BIDDING_ZONE_CNEC_MAP: dict[BiddingZonesEnum, list[tuple[str, BiddingZonesEnum]]
         ("Border_CNEC_DK2_SB-DK2", BiddingZonesEnum.DK2_SB),
         ("Border_CNEC_DK2_KO-DK2", BiddingZonesEnum.DK2_KO),
         ("Border_CNEC_SE4-DK2", BiddingZonesEnum.SE4),
-    ],
-    BiddingZonesEnum.DK2_ST: [
-        ("Border_CNEC_DK2-DK2_ST", BiddingZonesEnum.DK2),
-    ],
-    BiddingZonesEnum.DK1_ST: [
-        ("Border_CNEC_DK1-DK1_ST", BiddingZonesEnum.DK1),
     ],
     BiddingZonesEnum.DK1_CO: [
         ("Border_CNEC_DK1-DK1_CO", BiddingZonesEnum.DK1),
